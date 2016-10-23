@@ -18,7 +18,7 @@ def receivedata(socketstream, packetlength, delimeter):
     ret = ""
     for d in rec:
         ret += d
-    incomingpackets -= - len(rec)
+    incomingpackets -= len(rec)
     if incomingpackets == 1:
         ret += bytes.decode(socketstream.recv(packetlength))
         ret = ret.rstrip(delimeter)
