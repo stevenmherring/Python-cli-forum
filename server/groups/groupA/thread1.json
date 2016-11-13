@@ -1,0 +1,15 @@
+{
+  "name": "subject1",
+  "thread": [
+    {
+      "author": "Steven Herring",
+      "date": "Sun, Nov 13 4:52:00 EST 2016",
+      "content": "Each group has its own directory filled with .txt files representing each thread. Like this one."
+    },
+    {
+     "author": "Steven Herring",
+     "date": "Sun, Nov 13 4:52:48 EST 2016",
+     "content": "Append new messaged to the end of the threads file, using this format."
+    }
+  ]
+}
