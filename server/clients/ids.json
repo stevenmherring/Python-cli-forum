@@ -1,0 +1,24 @@
+{
+  "clients": [
+    {
+      "id": "1337",
+      "name": "James Gordon"
+    },
+    {
+      "id": "1111",
+      "name": "Snoopy"
+    },
+    {
+      "id": "2222",
+      "name": "Mary Jane"
+    },
+    {
+      "id": "3333",
+      "name": "Bilbo Baggins"
+    },
+    {
+      "id": "4444",
+      "name": "Kyle Rayner"
+    }
+  ]
+}
