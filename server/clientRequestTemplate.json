@@ -1,0 +1,57 @@
+{
+  "type": "login/ag/sg/rg/logout/ ONLY MANDATORY FIELD, the rest depend on commands issued",
+  "subcommand": "if type ag/sg/rg this field determines a subcommand 's/u/n/r/q'",
+  "N": "# typical quantitative modifier for all commands",
+  "groupName": "group.1.com",
+  "postName": "post subject here",
+  "selections": [],
+  "subscriptions": [
+    "group.1.com",
+    "group.3.com"
+    ],
+  "body": {
+    "group": "group name",
+    "subject": "subject",
+    "author": "ID or author input",
+    "date": "set server side?",
+    "content": "message"
+    }
+}
+
+{
+  "_comment": "This JSON object would post a message to group.1.com with subject 'This is a test post' by James M",
+  "type": "rg",
+  "subcommand": "p",
+  "groupName": "group.1.com",
+  "postName": "This is a test post",
+  "body": {
+    "group": "group.1.com",
+    "subject": "This is a test post",
+    "author": "James M",
+    "date": "Tue, Nov 16 4:43:48 EST 2016",
+    "content": "This is a basic request to post a message on the discussion board"
+    }
+}
+
+{
+  "_comment": "This JSON object would request to subscribe to group.1.com, group.2.com, group.7.com",
+  "type": "ag",
+  "subcommand": "s",
+  "selections": [
+    "group.1.com",
+    "group.2.com",
+    "group.7.com"
+  ]
+}
+
+{
+  "_comment": "This JSON object requests help from the server",
+  "type": "h"
+}
+
+{
+  "_comment": "This JSON object would request N more posts to be viewed",
+  "type": "rg",
+  "subcommand": "n",
+  "N": 5
+}

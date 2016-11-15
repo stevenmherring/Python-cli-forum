@@ -1,0 +1,69 @@
+{
+  "type": "error 404, success 200",
+  "body": "Error message, Help response, etc"
+}
+
+{
+  "_comment": "This response to a client request for help",
+  "type": "200",
+  "body": "Usage Discussion Server\n
+  You can use commands login, logout, q, ag, rg, sg, n.......MORE USAGE STUFF"
+}
+
+{
+  "_comment": "This is a response to requesting AG mode",
+  "type": "200",
+  "body": "Entered Available groups mode",
+  "groups": [
+    {
+      "name": "group name1",
+      "subjects": [
+        {
+          "name": "subject1",
+          "thread": [
+            {
+              "author": "id/author",
+              "date": "time()",
+              "content": "message"
+            }
+          ]
+        },
+        {
+          "name": "subject2",
+          "thread": [
+            {
+              "author": "id/author",
+              "date": "time()",
+              "content": "message"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "group name2",
+      "subjects": [
+        {
+          "name": "subject1",
+          "thread": [
+            {
+              "author": "id/author",
+              "date": "time()",
+              "content": "message"
+            }
+          ]
+        },
+        {
+          "name": "subject2",
+          "thread": [
+            {
+              "author": "id/author",
+              "date": "time()",
+              "content": "message"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
