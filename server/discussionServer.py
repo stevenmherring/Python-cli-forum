@@ -28,12 +28,23 @@ REQUEST_HELP = "help"
 REQUEST_AG = "ag"
 REQUEST_SG = "sg"
 REQUEST_RG = "rg"
+SUB_S = "s"
+SUB_U = "u"
+SUB_N = "n"
+SUB_Q = "q"
 
 """
 Socket Information
 """
 PACKET_LENGTH = 4096
 PORT_NUMBER = 9390
+
+"""
+Default Server Values
+"""
+CLIENT_DATA_FILE = "/clients/ids.json"
+GROUPS_PATH = "/groups/"
+DEFAULT_N = 3
 
 """
 Server data
@@ -61,50 +72,32 @@ class clientHandler(threading.Thread):
         loggedIn = False
         userID = ""
         while True:
-            res = {}
             try:
                 req = clientSocket.recv(PACKET_LENGTH)
                 message = json.loads(req)
                 msgType = message["type"].lower()
                 if !loggedIn and msgType == REQUEST_LOGIN:
                     userID = message["arg1"]
-                    if userID in offline_clients:
-                        #login
-                        with lock:
-                            online_clients.append(userID)
-                            offline_clients.remove(userID)
-                        loggedIn = True
-                        res = responseBuilder("Success", ("User ID: " + userID + " logged in successfully."))
-                        clientSocket.send(json.dumps(res))
-                    elif userID in online_clients:
-                        #already logged in
-                        res = responseBuilder("Error", ("User ID: " + userID + " is already logged in."))
-                        clientSocket.send(json.dumps(res))
-                    else:
-                        #user doesn't exists
-                        res = responseBuilder("Error", ("User ID: " + userID + " does not exist."))
-                        clientSocket.send(json.dumps(res))
+                    loginClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                 elif msgType == REQUEST_HELP:
                     res = helpMenu()
                     clientSocket.send(json.dumps(res))
                 elif msgType == REQUEST_LOGOUT:
-                    if loggedIn:
-                        with lock:
-                            offline_clients.append(userID)
-                            online_clients.remove(userID)
-                        loggedIn = False
-                        res = responseBuilder("Success", ("User ID: " + userID + " has been logged out."))
-                        clientSocket.send(json.dumps(res))
-                    else:
-                        res = responseBuilder("Error", "Not logged in")
-                        clientSocket.send(json.dumps(res))
+                    logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                 elif loggedIn:
+                    if message["N"] == None:
+                        n = DEFAULT_N
+                    else:
+                        n = int(message["N"])
                     if msgType == REQUEST_AG:
                         #available mode
+                        enterAG(clientSocket, userID, n)
                     elif msgType == REQUEST_SG:
                         #subscribe mode
+                        enterSG()
                     elif msgType == REQUEST_RG:
                         #read mode
+                        enterRG()
                     else:
                         sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID), COLOR_ERROR))
                         res = responseBuilder("Error", ("Unsupported command: " + msgType + " by client " + userID))
@@ -165,8 +158,132 @@ def loadGroups():
     #load groups
 
 def loadClients():
+    """
+    Loads the clients on startup from client file
+    """
     global offline_clients
+    global lock
     #load clients
+    with lock:
+        with open(CLIENT_DATA_FILE, "r") as f:
+            clientData = json.loads(f.read())
+            offline_clients = clientData["clients"]
+
+def loginClient(clientSocket, userID, offline_clients, online_clients, loggedIn):
+    """
+    Checks if the user is logged off & exits then logs them in
+    """
+    global lock
+    clientData = {}
+    with lock:
+        clientData = next((client for client in offline_clients if client["id"] == userID), None)
+        if clientData != None:
+            online_clients.append(clientData)
+            offline_clients[:] = [client for client in offline_clients if client.get("id") != userID]
+            loggedIn = True
+            res = responseBuilder("Success", ("User ID: " + userID + " logged in successfully."))
+            clientSocket.send(json.dumps(res))
+            return True
+        else:
+            #user doesn't exists
+            res = responseBuilder("Error", ("User ID: " + userID + " does not exist."))
+            clientSocket.send(json.dumps(res))
+            return False
+
+def logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn):
+    """
+    Checks if the user is logged in and logs them out
+    """
+    global lock
+    clientData = {}
+    with lock:
+        clientData = next((client for client in online_clients if client["id"] == userID), None)
+        if clientData != None:
+            offline_clients.append(clientData)
+            online_clients[:] = [client for client in online_clients if client.get("id") != userID]
+            loggedIn = False
+            res = responseBuilder("Success", ("User ID: " + userID + " logged out successfully."))
+            clientSocket.send(json.dumps(res))
+            return True
+        else:
+            #user doesn't exists
+            res = responseBuilder("Error", ("User ID: " + userID + " does not exist."))
+            clientSocket.send(json.dumps(res))
+            return False
+
+def enterAG(clientSocket, userID, msgCount):
+    """
+    Available Group Mode, Allows user to use special commands
+    s – subscribe to groups. It takes one or more numbers between 1 and N as arguments. E.g., given the output above, the user may enter “s 1 3” to subscribe to two more groups: comp.programming and comp.lang.c
+    u – unsubscribe. It has the same syntax as the s command, except that it is used to unsubscribe from one or more groups. E.g., the user can unsubscribe from group comp.lang.javascript by entering the command “u 5”
+    n – lists the next N discussion groups. If all groups are displayed, the program exits from the ag command mode
+    q – exits from the ag command, before finishing displaying all groups
+    """
+    global groups
+    messageCount = 0
+    res = {
+        "type": "Success"
+        "groupList": []
+    }
+    if (messageCount + msgCount) > len(groups):
+        maxRange = len(groups)
+    else:
+        maxRange = messageCount + msgCount
+    for i in range(messageCount, maxRange):
+        with lock:
+            res[groupList].add(groups[i])
+    clientSocket.send(json.dumps(res))
+    while True:
+        res = {}
+        req = clientSocket.recv(PACKET_LENGTH)
+        message = json.loads(req)
+        msgType = message["type"].lower()
+        if msgType != REQUEST_AG:
+            res = responseBuilder("Error", "Wrong mode type, in AG requesting " + msgType)
+            clientSocket.send(json.dumps(res))
+            return False
+        subcommand = message["subcommand"].lower()
+        if subcommand == SUB_S:
+            #subscribe groups
+            selections = message["selections"]
+            for s in selections:
+                if s not in clients[userID][subscriptions]:
+                    clients[userID][subscriptions].append(s)
+        elif subcommand == SUB_U:
+            #unsubscribed
+            selections = message["selections"]
+            for s in selections:
+                if s in clients[userID][subscriptions]:
+                    clients[userID][subscriptions].remove(s)
+        elif subcommand == SUB_N:
+            #lists next N groups
+            msgCount = int(message["N"])
+            res = {
+                "type": "Success"
+                "groupList": []
+            }
+            if (messageCount + msgCount) > len(groups):
+                maxRange = len(groups)
+            else:
+                maxRange = messageCount + msgCount
+            for i in range(messageCount, maxRange):
+                with lock:
+                    res[groupList].add(groups[i])
+            clientSocket.send(json.dumps(res))
+        elif subcommand == SUB_Q:
+            #exits AG moder
+            res = responseBuilder("Success", "Exit AG Mode successfully.")
+            clientSocket.send(json.dumps(res))
+            return True
+        else:
+            #bad command
+            res = responseBuilder("Error", "Bad command. Please refer to help")
+            clientSocket.send(json.dumps(res))
+
+def enterSG(clientSocket, userID):
+
+def enterRG(clientSocket, userID):
+
 
 def beginListening(serverSocket):
     """

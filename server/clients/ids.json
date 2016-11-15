@@ -2,23 +2,28 @@
   "clients": [
     {
       "id": "1337",
-      "name": "James Gordon"
+      "name": "James Gordon",
+      "subscriptions": []
     },
     {
       "id": "1111",
-      "name": "Snoopy"
+      "name": "Snoopy",
+      "subscriptions": []
     },
     {
       "id": "2222",
-      "name": "Mary Jane"
+      "name": "Mary Jane",
+      "subscriptions": []
     },
     {
       "id": "3333",
-      "name": "Bilbo Baggins"
+      "name": "Bilbo Baggins",
+      "subscriptions": []
     },
     {
       "id": "4444",
-      "name": "Kyle Rayner"
+      "name": "Kyle Rayner",
+      "subscriptions": []
     }
   ]
 }

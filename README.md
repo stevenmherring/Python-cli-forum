@@ -10,6 +10,7 @@ Client sends requests to server in form; type non optional, the rest art dependi
   "type": "login/ag/sg/rg/logout/",
   "subcommand": "if type ag/sg/rg this field determines a subcommand 's/u/n/r/q'",
   "N": # typical quantitative modifier for all commands,
+  "selections": []
   "subscriptions": [
     'group.1.com',
     'group.3.com'
