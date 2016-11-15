@@ -32,6 +32,9 @@ SUB_S = "s"
 SUB_U = "u"
 SUB_N = "n"
 SUB_Q = "q"
+SUB_ID = "id"
+SUB_R = "r"
+SUB_P = "p"
 
 """
 Socket Information
@@ -213,11 +216,7 @@ def logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn
 
 def enterAG(clientSocket, userID, msgCount):
     """
-    Available Group Mode, Allows user to use special commands
-    s – subscribe to groups. It takes one or more numbers between 1 and N as arguments. E.g., given the output above, the user may enter “s 1 3” to subscribe to two more groups: comp.programming and comp.lang.c
-    u – unsubscribe. It has the same syntax as the s command, except that it is used to unsubscribe from one or more groups. E.g., the user can unsubscribe from group comp.lang.javascript by entering the command “u 5”
-    n – lists the next N discussion groups. If all groups are displayed, the program exits from the ag command mode
-    q – exits from the ag command, before finishing displaying all groups
+    Available Group Mode, Allows user to use special commands s, u, n, q
     """
     global groups
     messageCount = 0
@@ -280,10 +279,126 @@ def enterAG(clientSocket, userID, msgCount):
             res = responseBuilder("Error", "Bad command. Please refer to help")
             clientSocket.send(json.dumps(res))
 
-def enterSG(clientSocket, userID):
+def enterSG(clientSocket, userID, msgCount):
+    """
+    Subscribed Group Mode, Allows user to use special commands u, n, q
+    """
+    global groups
+    messageCount = 0
+    res = {
+        "type": "Success"
+        "groupList": []
+    }
+    if (messageCount + msgCount) > len(groups):
+        maxRange = len(groups)
+    else:
+        maxRange = messageCount + msgCount
+    for i in range(messageCount, maxRange):
+        with lock:
+            res[groupList].add(groups[i])
+    clientSocket.send(json.dumps(res))
+    while True:
+        res = {}
+        req = clientSocket.recv(PACKET_LENGTH)
+        message = json.loads(req)
+        msgType = message["type"].lower()
+        if msgType != REQUEST_SG:
+            res = responseBuilder("Error", "Wrong mode type, in SG requesting " + msgType)
+            clientSocket.send(json.dumps(res))
+            return False
+        subcommand = message["subcommand"].lower()
+        if subcommand == SUB_U:
+            #unsubscribed
+            selections = message["selections"]
+            for s in selections:
+                if s in clients[userID][subscriptions]:
+                    clients[userID][subscriptions].remove(s)
+        elif subcommand == SUB_N:
+            #lists next N groups
+            msgCount = int(message["N"])
+            res = {
+                "type": "Success"
+                "groupList": []
+            }
+            if (messageCount + msgCount) > len(groups):
+                maxRange = len(groups)
+            else:
+                maxRange = messageCount + msgCount
+            for i in range(messageCount, maxRange):
+                with lock:
+                    res[groupList].add(groups[i])
+            clientSocket.send(json.dumps(res))
+        elif subcommand == SUB_Q:
+            #exits AG moder
+            res = responseBuilder("Success", "Exit SG Mode successfully.")
+            clientSocket.send(json.dumps(res))
+            return True
+        else:
+            #bad command
+            res = responseBuilder("Error", "Bad command. Please refer to help")
+            clientSocket.send(json.dumps(res))
 
-def enterRG(clientSocket, userID):
+def enterRG(clientSocket, userID, msgCount, groupName):
+    """
+    Read Group Mode, Allows user to use special commands [id], r, n, p, q
+    """
+    global groups
+    messageCount = 0
+    res = {}
+    #build initial posting response ie. posts 1-msgCount
+    while True:
+        res = {}
+        req = clientSocket.recv(PACKET_LENGTH)
+        message = json.loads(req)
+        msgType = message["type"].lower()
+        if msgType != REQUEST_RG:
+            res = responseBuilder("Error", "Wrong mode type, in RG requesting " + msgType)
+            clientSocket.send(json.dumps(res))
+            return False
+        subcommand = message["subcommand"].lower()
+        if subcommand == SUB_ID:
+            #enter read post mode
+            postName = message["postName"]
+            enterDisplayPost(clientSocket, userID, postName)
+        elif subcommand == SUB_R:
+            #mark post read
+            postName = message["postName"]
+            markPost(userID, postName, "r")
+        elif subcommand == SUB_N:
+            #lists next N posts in groupName
+            #TODO
+        elif subcommand == SUB_P:
+            #makes a new post in groupName
+            postData = {} = message["body"]
+            createPost(userID, postData)
+        elif subcommand == SUB_Q:
+            #exits AG moder
+            res = responseBuilder("Success", "Exit RG Mode successfully.")
+            clientSocket.send(json.dumps(res))
+            return True
+        else:
+            #bad command
+            res = responseBuilder("Error", "Bad command. Please refer to help")
+            clientSocket.send(json.dumps(res))
 
+
+def enterDisplayPost(clientSocket, userID, postName):
+    """
+    Mode to display a post more detailed, and interactive
+    """
+    #TODO
+
+def markPost(userID, postName, mark):
+    """
+    Marks a post as Read, Unread etc...based on 'r', 'u'
+    """
+    #TODO
+
+def createPost(userID, postData):
+    """
+    Creates a post from user
+    """
+    #TODO
 
 def beginListening(serverSocket):
     """
