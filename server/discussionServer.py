@@ -372,7 +372,7 @@ def enterRG(clientSocket, userID, msgCount, groupName):
             postData = {} = message["body"]
             createPost(userID, postData)
         elif subcommand == SUB_Q:
-            #exits AG moder
+            #exits AG mode
             res = responseBuilder("Success", "Exit RG Mode successfully.")
             clientSocket.send(json.dumps(res))
             return True
@@ -417,6 +417,9 @@ def main():
     """
     Def Main
     """
+    #preload group and client information
+    loadGroups()
+    loadClients()
     sys.stdout.write(colored(("Server started on port " + PORT_NUMBER), COLOR_IMPORTANT))
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind("", PORT_NUMBER)
