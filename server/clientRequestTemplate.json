@@ -1,5 +1,6 @@
 {
-  "type": "login/ag/sg/rg/logout/ ONLY MANDATORY FIELD, the rest depend on commands issued",
+  "type": "login/ag/sg/rg/logout/help/ ONLY MANDATORY FIELD, the rest depend on commands issued",
+  "userId": "Use for login",
   "subcommand": "if type ag/sg/rg this field determines a subcommand 's/u/n/r/q'",
   "N": "# typical quantitative modifier for all commands",
   "groupName": "group.1.com",
