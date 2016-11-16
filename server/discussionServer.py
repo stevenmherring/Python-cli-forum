@@ -18,6 +18,7 @@ Color definitions
 """
 COLOR_ERROR = "red"
 COLOR_IMPORTANT = "cyan"
+COLOR_OUTGOING = "magenta"
 
 """
 Client commands
@@ -123,7 +124,7 @@ class clientHandler(threading.Thread):
         clientSocket.close()
         threadName.exit()
 
-def responseBuilder(mtype, body):
+def responseBuilder(threadID, mtype, body):
     """
     Build and returns a json style response as basic protocol. Message Type and its body
     """
@@ -131,6 +132,8 @@ def responseBuilder(mtype, body):
         "type": mtype,
         "body": body
     }
+    sys.stdout.write(colored(json.dumps(response), COLOR_OUTGOING))
+    sys.stdout.write(colored(("Thread: " + threadID + json.dumps(response)), COLOR_OUTGOING))
     return response
 
 def helpMenu():
@@ -403,7 +406,7 @@ def enterDisplayPost(clientSocket, userID, postName):
 def markPost(userID, groupName, postSubject, postNumber, mark):
     """
     Marks a post as Read, Unread etc...based on 'r', 'u'
-    Holy shit, super neg on the O(n) but that's okay...
+    Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
     global lock
     with lock:
@@ -413,9 +416,13 @@ def markPost(userID, groupName, postSubject, postNumber, mark):
                     subjects = json.loads(f.read())
                     for s in subjects:
                         if s["name"] == postSubject:
-                            for p in s["threads"]:
-                                if p["postNumber"] == postNumber:
-                                    p["usersViewed"].append(userID)
+                            p = s["thread"][postNumber]
+                            if p["postNumber"] == postNumber:
+                                p["usersViewed"].append(userID)
+                            else:
+                                #error, postNumbers not aligned
+                                res = responseBuilder("Error", "Post Numbers Not Aligned")
+                                clientSocket.send(json.dumps(res))
 
 def createPost(userID, postData):
     """
