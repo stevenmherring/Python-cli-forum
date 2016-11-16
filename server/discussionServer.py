@@ -373,8 +373,9 @@ def enterRG(clientSocket, userID, msgCount, groupName):
             enterDisplayPost(clientSocket, userID, postName)
         elif subcommand == SUB_R:
             #mark post read
-            postName = message["postName"]
-            markPost(userID, postName, "r")
+            postSubject = message["postSubject"]
+            postNum = message["postNumber"]
+            markPost(userID, groupName, postSubject, postNum, "r")
         elif subcommand == SUB_N:
             #lists next N posts in groupName
             #TODO
@@ -399,11 +400,22 @@ def enterDisplayPost(clientSocket, userID, postName):
     """
     #TODO
 
-def markPost(userID, postName, mark):
+def markPost(userID, groupName, postSubject, postNumber, mark):
     """
     Marks a post as Read, Unread etc...based on 'r', 'u'
+    Holy shit, super neg on the O(n) but that's okay...
     """
-    #TODO
+    global lock
+    with lock:
+        for d in groups:
+            if d["name"] == groupName:
+                with open(d["path"], "rw") as f:
+                    subjects = json.loads(f.read())
+                    for s in subjects:
+                        if s["name"] == postSubject:
+                            for p in s["threads"]:
+                                if p["postNumber"] == postNumber:
+                                    p["usersViewed"].append(userID)
 
 def createPost(userID, postData):
     """

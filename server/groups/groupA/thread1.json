@@ -1,15 +1,55 @@
 {
-  "name": "subject1",
-  "thread": [
+  "subjects": [
     {
-      "author": "Steven Herring",
-      "date": "Sun, Nov 13 4:52:00 EST 2016",
-      "content": "Each group has its own directory filled with .txt files representing each thread. Like this one."
+      "name": "subject1",
+      "postCount": 2,
+      "thread": [
+        {
+          "author": "Steven Herring",
+          "date": "Sun, Nov 13 4:52:00 EST 2016",
+          "content": "Each group has its own directory filled with .txt files representing each thread. Like this one.",
+          "postNumber": 1,
+          "usersViewed": [
+            "2222"
+          ]
+        },
+        {
+         "author": "Steven Herring",
+         "date": "Sun, Nov 13 4:52:48 EST 2016",
+         "content": "Append new messaged to the end of the threads file, using this format.",
+         "postNumber": 2,
+         "usersViewed": [
+           "3333",
+           "4444"
+         ]
+        }
+      ]
     },
     {
-     "author": "Steven Herring",
-     "date": "Sun, Nov 13 4:52:48 EST 2016",
-     "content": "Append new messaged to the end of the threads file, using this format."
+      "name": "subject2",
+      "postCount": 2,
+      "thread": [
+        {
+          "author": "Steven Herring",
+          "date": "Sun, Nov 13 4:52:00 EST 2016",
+          "content": "Each group has its own directory filled with .txt files representing each thread. Like this one.",
+          "postNumber": 1,
+          "usersViewed": [
+            "1337",
+            "1111"
+          ]
+        },
+        {
+         "author": "Steven Herring",
+         "date": "Sun, Nov 13 4:52:48 EST 2016",
+         "content": "Append new messaged to the end of the threads file, using this format.",
+         "postNumber": 2,
+         "usersViewed": [
+           "1337",
+           "1111"
+         ]
+        }
+      ]
     }
   ]
 }
