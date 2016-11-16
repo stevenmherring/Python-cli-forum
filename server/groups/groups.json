@@ -1,0 +1,24 @@
+{
+  "groups": [
+    {
+    "name": "group.1.com",
+    "path": "/threads/group1.json"
+    },
+    {
+    "name": "group.2.com",
+    "path": "/threads/group2.json"
+    },
+    {
+    "name": "group.3.com",
+    "path": "/threads/group3.json"
+    },
+    {
+    "name": "group.4.com",
+    "path": "/threads/group4.json"
+    },
+    {
+    "name": "group.5.com",
+    "path": "/threads/group5.json"
+    }
+  ]
+}

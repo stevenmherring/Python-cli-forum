@@ -46,8 +46,10 @@ PORT_NUMBER = 9390
 Default Server Values
 """
 CLIENT_DATA_FILE = "/clients/ids.json"
-GROUPS_PATH = "/groups/"
+GROUPS_PATH = "/groups"
+GROUPS_DATA_FILE = GROUPS_PATH + "/groups.json"
 DEFAULT_N = 3
+DELAY_PRINT = 0.03
 
 """
 Server data
@@ -71,7 +73,8 @@ class clientHandler(threading.Thread):
         global offline_clients
         global online_clients
         global groups
-
+        #mark dirty on data change, !dirty on data retrieval
+        dirty = False
         loggedIn = False
         userID = ""
         while True:
@@ -97,10 +100,10 @@ class clientHandler(threading.Thread):
                         enterAG(clientSocket, userID, n)
                     elif msgType == REQUEST_SG:
                         #subscribe mode
-                        enterSG()
+                        enterSG(clientSocket, userID, n)
                     elif msgType == REQUEST_RG:
                         #read mode
-                        enterRG()
+                        enterRG(clientSocket, userID, n)
                     else:
                         sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID), COLOR_ERROR))
                         res = responseBuilder("Error", ("Unsupported command: " + msgType + " by client " + userID))
@@ -157,8 +160,16 @@ def helpMenu():
     return response
 
 def loadGroups():
+    """
+    Loads the groups on startup
+    """
     global groups
+    global lock
     #load groups
+    with lock:
+        with open(GROUPS_DATA_FILE, "r") as f:
+            groupsData = json.loads(f.read())
+            groups = groupsData["groups"]
 
 def loadClients():
     """
@@ -400,15 +411,25 @@ def createPost(userID, postData):
     """
     #TODO
 
+def delay(t):
+    """
+    Sleep for time t.
+    """
+    sleep(t)
+
 def beginListening(serverSocket):
     """
     Listens for clients, spawns and sends client to new thread.
     """
+    alert = "Server started listening on port " + PORT_NUMBER
+    for c in alert:
+        sys.stdout.write(colored(c, COLOR_IMPORTANT))
+        delay(DELAY_PRINT)
     threadCount = 0
     while True:
         sys.stdout.write(colored("Waiting for clients...", COLOR_IMPORTANT))
         #accept client
-        clientSocket, addr = serverSocket.accept()
+        clientSocket, clientAddr = serverSocket.accept()
         newThread = clientHandler(str(threadCount), clientSocket, clientAddr)
         threadCount = threadCount + 1
         newThread.start()
@@ -420,7 +441,6 @@ def main():
     #preload group and client information
     loadGroups()
     loadClients()
-    sys.stdout.write(colored(("Server started on port " + PORT_NUMBER), COLOR_IMPORTANT))
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind("", PORT_NUMBER)
     serverSocket.listen(MAX_CLIENTS)
