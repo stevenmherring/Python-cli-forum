@@ -359,6 +359,8 @@ def enterRG(clientSocket, userID, msgCount, groupName):
     global groups
     messageCount = 0
     res = {}
+    currentGroup = {}
+    currentGroup = loadCurrentGroup(groupName)
     #build initial posting response ie. posts 1-msgCount
     while True:
         res = {}
@@ -371,9 +373,9 @@ def enterRG(clientSocket, userID, msgCount, groupName):
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_ID:
-            #enter read post mode
-            postName = message["postName"]
-            enterDisplayPost(clientSocket, userID, postName)
+            #enter read post mode - this can be handled completely by the client side
+            res = responseBuilder("Error", "Client should store and handle the data read post mode, no need for server comm.")
+            clientSocket.send(json.dumps(res))
         elif subcommand == SUB_R:
             #mark post read
             postSubject = message["postSubject"]
@@ -381,7 +383,18 @@ def enterRG(clientSocket, userID, msgCount, groupName):
             markPost(userID, groupName, postSubject, postNum, "r")
         elif subcommand == SUB_N:
             #lists next N posts in groupName
-            #TODO
+            #TODO this needs to confirm there arent new posts with the server...if no new posts, client handles it...if new posts, resend the post lists
+            if not isGroupCurrent(currentGroup, groupName):
+                currentGroup = loadCurrentGroup
+                res = {
+                    "type": "Error",
+                    "body": "Updated Data",
+                    "thread": currentGroup
+                }
+                clientSocket.send(json.dumps(res))
+            else:
+                res = responseBuilder("Success", "Data is current")
+                clientSocket.send(json.dumps(res))
         elif subcommand == SUB_P:
             #makes a new post in groupName
             postData = {} = message["body"]
@@ -395,13 +408,6 @@ def enterRG(clientSocket, userID, msgCount, groupName):
             #bad command
             res = responseBuilder("Error", "Bad command. Please refer to help")
             clientSocket.send(json.dumps(res))
-
-
-def enterDisplayPost(clientSocket, userID, postName):
-    """
-    Mode to display a post more detailed, and interactive
-    """
-    #TODO
 
 def markPost(userID, groupName, postSubject, postNumber, mark):
     """
@@ -419,6 +425,8 @@ def markPost(userID, groupName, postSubject, postNumber, mark):
                             p = s["thread"][postNumber]
                             if p["postNumber"] == postNumber:
                                 p["usersViewed"].append(userID)
+                                res = responseBuilder("Success", "Post marked")
+                                clientSocket.send(json.dumps(res))
                             else:
                                 #error, postNumbers not aligned
                                 res = responseBuilder("Error", "Post Numbers Not Aligned")
@@ -430,6 +438,32 @@ def createPost(userID, postData):
     """
     #TODO
 
+def isGroupCurrent(currentGroup, groupName):
+    """
+    Checks if currentGroup data is up to date with groupName
+    """
+    global lock
+    cgTime = currentGroup["last_modified"]
+    with lock:
+        for d in groups:
+            if d["name"] == groupName:
+                if cgTime == d["last_modified"]:
+                    return True
+                else:
+                    return False
+
+def loadCurrentGroup(groupName):
+    """
+    Returns specific group data
+    """
+    global lock
+    ret = {}
+    with lock:
+        for d in groups:
+            if d["name"] == groupName:
+                ret = d
+    return ret
+
 def delay(t):
     """
     Sleep for time t.
@@ -440,7 +474,7 @@ def beginListening(serverSocket):
     """
     Listens for clients, spawns and sends client to new thread.
     """
-    alert = "Server started listening on port " + PORT_NUMBER
+    alert = "Server started listening on port " + str(PORT_NUMBER)
     for c in alert:
         sys.stdout.write(colored(c, COLOR_IMPORTANT))
         delay(DELAY_PRINT)
