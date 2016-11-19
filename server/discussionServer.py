@@ -19,14 +19,16 @@ class clientHandler(threading.Thread):
         self.clientAddr = clientAddr
 
     def run(self):
-        typePrint((".....New Client Connected: " + clientAddr + "\n"), COLOR_OUTGOING)
+        clientSocket = self.clientSocket
+        clientAddr = self.clientAddr
+        updatePrint((".....New Client Connected: " + str(clientAddr) + "\n"), COLOR_OUTGOING)
         #mark dirty on data change, !dirty on data retrieval
         dirty = False
         loggedIn = False
         userID = ""
         while True:
             try:
-                req = clientSocket.recv(PACKET_LENGTH)
+                req = bytes.decode((clientSocket.recv(PACKET_LENGTH)))
                 message = json.loads(req)
                 msgType = message["type"].lower()
                 if not loggedIn and msgType == REQUEST_LOGIN:
@@ -34,7 +36,7 @@ class clientHandler(threading.Thread):
                     loginClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                 elif msgType == REQUEST_HELP:
                     res = helpMenu()
-                    clientSocket.send(json.dumps(res))
+                    clientSocket.send(str.encode(json.dumps(res)))
                 elif msgType == REQUEST_LOGOUT:
                     logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                 elif loggedIn:
@@ -55,12 +57,12 @@ class clientHandler(threading.Thread):
                         sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID), COLOR_ERROR))
                         sys.stdout.flush()
                         res = responseBuilder("Error", ("Unsupported command: " + msgType + " by client " + userID))
-                        clientSocket.send(json.dumps(res))
+                        clientSocket.send(str.encode(json.dumps(res)))
                 else:
                     sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID), COLOR_ERROR))
                     sys.stdout.flush()
                     res = responseBuilder("Error", ("Unsupported command: " + msgType + " by client " + userID))
-                    clientSocket.send(json.dumps(res))
+                    clientSocket.send(str.encode(json.dumps(res)))
 
             except IOError as err:
                 sys.stdout.write(colored(err, COLOR_ERROR))
@@ -69,7 +71,7 @@ class clientHandler(threading.Thread):
                     "type": "Error",
                     "body": IO_ERROR
                 }
-                clientSocket.send(json.dumps(res))
+                clientSocket.send(str.encode(json.dumps(res)))
         clientSocket.close()
         threadName.exit()
 
@@ -114,10 +116,27 @@ def helpMenu():
     return response
 
 def typePrint(message, color):
+    """
+    Typed out 'loading' style print w/ color
+    """
     for c in message:
         delay(DELAY_PRINT)
         sys.stdout.write(colored(c, color))
         sys.stdout.flush()
+
+def updatePrint(message, color):
+    """
+    Quick print w/ color
+    """
+    sys.stdout.write(colored(message, color))
+    sys.stdout.flush()
+
+def trimBytesToString(bytes):
+    """
+    Takes a bytes object, returns a string version without the b' ' prologue/epilogue
+    """
+    return str(bytes)[2:-1]
+
 
 def loadGroups():
     """
@@ -160,12 +179,12 @@ def loginClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
             offline_clients[:] = [client for client in offline_clients if client.get("id") != userID]
             loggedIn = True
             res = responseBuilder("Success", ("User ID: " + userID + " logged in successfully."))
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return True
         else:
             #user doesn't exists
             res = responseBuilder("Error", ("User ID: " + userID + " does not exist."))
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return False
 
 def logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn):
@@ -181,12 +200,12 @@ def logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn
             online_clients[:] = [client for client in online_clients if client.get("id") != userID]
             loggedIn = False
             res = responseBuilder("Success", ("User ID: " + userID + " logged out successfully."))
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return True
         else:
             #user doesn't exists
             res = responseBuilder("Error", ("User ID: " + userID + " does not exist."))
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return False
 
 def enterAG(clientSocket, userID, msgCount):
@@ -206,15 +225,15 @@ def enterAG(clientSocket, userID, msgCount):
     for i in range(messageCount, maxRange):
         with lock:
             res[groupList].add(groups[i])
-    clientSocket.send(json.dumps(res))
+    clientSocket.send(str.encode(json.dumps(res)))
     while True:
         res = {}
-        req = clientSocket.recv(PACKET_LENGTH)
+        req = bytes.decode(clientSocket.recv(PACKET_LENGTH))
         message = json.loads(req)
         msgType = message["type"].lower()
         if msgType != REQUEST_AG:
             res = responseBuilder("Error", "Wrong mode type, in AG requesting " + msgType)
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_S:
@@ -243,16 +262,16 @@ def enterAG(clientSocket, userID, msgCount):
             for i in range(messageCount, maxRange):
                 with lock:
                     res[groupList].add(groups[i])
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
         elif subcommand == SUB_Q:
             #exits AG moder
             res = responseBuilder("Success", "Exit AG Mode successfully.")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return True
         else:
             #bad command
             res = responseBuilder("Error", "Bad command. Please refer to help")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
 
 def enterSG(clientSocket, userID, msgCount):
     """
@@ -271,15 +290,15 @@ def enterSG(clientSocket, userID, msgCount):
     for i in range(messageCount, maxRange):
         with lock:
             res[groupList].add(groups[i])
-    clientSocket.send(json.dumps(res))
+    clientSocket.send(str.encode(json.dumps(res)))
     while True:
         res = {}
-        req = clientSocket.recv(PACKET_LENGTH)
+        req = bytes.decode(clientSocket.recv(PACKET_LENGTH))
         message = json.loads(req)
         msgType = message["type"].lower()
         if msgType != REQUEST_SG:
             res = responseBuilder("Error", "Wrong mode type, in SG requesting " + msgType)
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_U:
@@ -302,16 +321,16 @@ def enterSG(clientSocket, userID, msgCount):
             for i in range(messageCount, maxRange):
                 with lock:
                     res[groupList].add(groups[i])
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
         elif subcommand == SUB_Q:
             #exits AG moder
             res = responseBuilder("Success", "Exit SG Mode successfully.")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return True
         else:
             #bad command
             res = responseBuilder("Error", "Bad command. Please refer to help")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
 
 def enterRG(clientSocket, userID, msgCount, groupName):
     """
@@ -325,18 +344,18 @@ def enterRG(clientSocket, userID, msgCount, groupName):
     #build initial posting response ie. posts 1-msgCount
     while True:
         res = {}
-        req = clientSocket.recv(PACKET_LENGTH)
+        req = bytes.decode(clientSocket.recv(PACKET_LENGTH))
         message = json.loads(req)
         msgType = message["type"].lower()
         if msgType != REQUEST_RG:
             res = responseBuilder("Error", "Wrong mode type, in RG requesting " + msgType)
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_ID:
             #enter read post mode - this can be handled completely by the client side
             res = responseBuilder("Error", "Client should store and handle the data read post mode, no need for server comm.")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
         elif subcommand == SUB_R:
             #mark post read
             postSubject = message["postSubject"]
@@ -352,10 +371,10 @@ def enterRG(clientSocket, userID, msgCount, groupName):
                     "body": "Updated Data",
                     "thread": currentGroup
                 }
-                clientSocket.send(json.dumps(res))
+                clientSocket.send(str.encode(json.dumps(res)))
             else:
                 res = responseBuilder("Success", "Data is current")
-                clientSocket.send(json.dumps(res))
+                clientSocket.send(str.encode(json.dumps(res)))
         elif subcommand == SUB_P:
             #makes a new post in groupName
             postData = message["body"]
@@ -363,12 +382,12 @@ def enterRG(clientSocket, userID, msgCount, groupName):
         elif subcommand == SUB_Q:
             #exits AG mode
             res = responseBuilder("Success", "Exit RG Mode successfully.")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
             return True
         else:
             #bad command
             res = responseBuilder("Error", "Bad command. Please refer to help")
-            clientSocket.send(json.dumps(res))
+            clientSocket.send(str.encode(json.dumps(res)))
 
 def markPost(userID, groupName, postSubject, postNumber, mark):
     """
@@ -387,17 +406,23 @@ def markPost(userID, groupName, postSubject, postNumber, mark):
                             if p["postNumber"] == postNumber:
                                 p["usersViewed"].append(userID)
                                 res = responseBuilder("Success", "Post marked")
-                                clientSocket.send(json.dumps(res))
+                                clientSocket.send(str.encode(json.dumps(res)))
                             else:
                                 #error, postNumbers not aligned
                                 res = responseBuilder("Error", "Post Numbers Not Aligned")
-                                clientSocket.send(json.dumps(res))
+                                clientSocket.send(str.encode(json.dumps(res)))
 
-def createPost(userID, postData):
+def createPost(userID, groupName, postData):
     """
     Creates a post from user
     """
     #TODO
+    global groups
+    for d in groups:
+        if d["name"] == groupName:
+            with open(d["path"], "rw") as f:
+                subjects = json.loads(f.read())
+
 
 def isGroupCurrent(currentGroup, groupName):
     """
@@ -521,7 +546,7 @@ def main():
     GROUPS_PATH = "groups/"
     GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
     DEFAULT_N = 3
-    DELAY_PRINT = 0.03
+    DELAY_PRINT = 0.025
     MAX_CLIENTS = 50
 
     """
