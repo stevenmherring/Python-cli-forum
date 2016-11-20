@@ -8,11 +8,15 @@ DEFAULT_PORT    = 9390
 INPUT_LOGIN     = "login"
 INPUT_LOGOUT    = "logout"
 INPUT_HELP      = "help"
+INPUT_QUIT      = "quit"
+INPUT_Q         = "q"
+SUCCESS         = "success"
+ERROR           = "error"
 
 logged = False
 usr_nm = ''
 
-ipaddr = raw_input("IP Address: ")
+ipaddr = input("IP Address: ")
 try:
     #print "Attempting to connect to " + ipaddr + ":" + DEFAULT_PORT
 
@@ -20,28 +24,32 @@ try:
     cl_socket.connect((DEFAULT_IP,int(DEFAULT_PORT)))
 
     while True:
-        usr_input = raw_input("> ").split(' ')
+        usr_input = input("> ").split(' ')
         sys.stdout.write(colored(("Input: " + str(usr_input[0]) + "\n"), 'red'))
         sys.stdout.flush()
         if usr_input[0] == INPUT_HELP:
             message = {
                 "type":"help"
             }
-            cl_socket.send(json.dumps(message))
+            cl_socket.send(str.encode(json.dumps(message)))
             rec = json.loads(bytes.decode(cl_socket.recv(DEFAULT_SIZE)))
-            print rec["body"]
+            print (rec["body"])
 
         elif logged is False:
             if usr_input[0] == INPUT_LOGIN :
                 if len(usr_input) > 1:
                     usr_nm = usr_input[1]
-                    print "User " + usr_nm + " succesfully logged in"
                     logged = True
                     message =  {
                         "type":"login",
-                        "userId":usr_nm
+                        "userID":usr_nm
                     }
-                    cl_socket.send(json.dumps(message))
+                    cl_socket.send(str.encode(json.dumps(message)))
+                    rec = json.loads(bytes.decode(cl_socket.recv(DEFAULT_SIZE)))
+                    if rec["type"].lower() == SUCCESS:
+                        print ("User " + usr_nm + " succesfully logged in")
+                    else:
+                        print ("Error, User " + usr_nm + " not logged in")
             else:
                 print("Not logged in\n")
         else:
@@ -49,10 +57,19 @@ try:
                 message =  {
                     "type":"logout"
                 }
-                cl_socket.send(json.dumps(message))
+                cl_socket.send(str.encode(json.dumps(message)))
                 break
+            elif usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
+                message = {
+                    "type":"quit"
+                }
+                cl_socket.send(str.encode(json.dumps(message)))
+                sys.stdout.write(colored("Goodbye!\n", 'cyan'))
+                sys.stdout.flush()
+                cl_socket.close()
+                sys.exit(0)
 
-    print "User " + usr_nm + " succesfully logged out"
+    print ("User " + usr_nm + " succesfully logged out")
 except IOError as err:
     print(str(err))
     print ("An error has occurred with the connection to " + str(ipaddr) + ":" + str(DEFAULT_PORT))
