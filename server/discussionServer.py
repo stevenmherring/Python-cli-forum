@@ -104,7 +104,10 @@ def helpMenu():
     """
     Returns json style help menu
     """
-    usage = """Server supported commands
+    usage = "310 Discussion Application\nDeveloped by: "
+    for a in authors:
+        usage = (usage + a + ", ")
+    usage = usage[:-2] + """\nServer supported commands
     login clientID  - Attempts to login with clientID
     logout          - Logs out of current clientID
     help            - Display usage guide
@@ -165,7 +168,7 @@ def loadGroups():
     #load groups
     typePrint("Populating discussion groups....\n", COLOR_TASK_START)
     with lock:
-        with open(GROUPS_DATA_FILE, "r") as f:
+        with open(os.path.join(__location__, GROUPS_DATA_FILE), "r") as f:
             groupsData = json.loads(f.read())
             groups = groupsData["groups"]
     typePrint(".......Discussion groups populated!!!\n", COLOR_TASK_FINISH)
@@ -179,7 +182,7 @@ def loadClients():
     #load clients
     typePrint("Populating client data....\n", COLOR_TASK_START)
     with lock:
-        with open(CLIENT_DATA_FILE, "r") as f:
+        with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
             clientData = json.loads(f.read())
             offline_clients = clientData["clients"]
     typePrint(".......Client data populated!!!\n", COLOR_TASK_FINISH)
@@ -416,7 +419,7 @@ def markPost(userID, groupName, postSubject, postNumber, mark):
     with lock:
         for d in groups:
             if d["name"] == groupName:
-                with open(d["path"], "rw") as f:
+                with open(os.path.join(__location__, d["path"]), "rw") as f:
                     subjects = json.loads(f.read())
                     for s in subjects:
                         if s["name"] == postSubject:
@@ -438,7 +441,7 @@ def createPost(userID, groupName, postData):
     global groups
     for d in groups:
         if d["name"] == groupName:
-            with open(d["path"], "rw") as f:
+            with open(os.path.join(__location__, d["path"]), "rw") as f:
                 subjects = json.loads(f.read())
 
 
@@ -468,6 +471,27 @@ def loadCurrentGroup(groupName):
                 ret = d
     return ret
 
+def loadAuthors():
+    """
+    Loads author information from ../AUTHORS
+    """
+    global authors
+    typePrint("Loading Application Information...\n", COLOR_TASK_START)
+    try:
+        with open(os.path.join(__location__, AUTHOR_FILE), "r") as f:
+            authors = f.read().splitlines()
+    except IOError as err:
+        debugPrint(str(err))
+    typePrint("....Application Information Loaded!!\n", COLOR_TASK_FINISH)
+
+def initLocation():
+    """
+    Initialize CWD of the process, so we can reliably open files we know should exist
+    """
+    global __location__
+    __location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
 def delay(t):
     """
     Sleep for time t.
@@ -493,6 +517,14 @@ def main():
     """
     Def Main
     """
+
+    """
+    Default APP info
+    """
+    global __location__
+    global AUTHOR_FILE
+    AUTHOR_FILE = "../AUTHORS"
+
     """
     String Messages
     """
@@ -594,6 +626,8 @@ def main():
             debugMode = True
             debugPrint("DEBUG MODE ENABLED\nDebug messages will appear similar to this one.\n")
     typePrint("Launching Discussion Server...\n", 'yellow')
+    initLocation()
+    loadAuthors()
     loadGroups()
     debugPrint(str(groups) + "\n")
     loadClients()
