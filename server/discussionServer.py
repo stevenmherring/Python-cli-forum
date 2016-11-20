@@ -20,6 +20,7 @@ class clientHandler(threading.Thread):
         self.alive = True
 
     def stop(self):
+        updatePrint(("Client: " + str(self.clientAddr) + " disconnected\n"), COLOR_IMPORTANT)
         self.alive = False
 
     def run(self):
@@ -48,7 +49,8 @@ class clientHandler(threading.Thread):
                     elif msgType == REQUEST_LOGOUT:
                         logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                     elif msgType == REQUEST_QUIT:
-                        logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
+                        if loggedIn:
+                            logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                         self.stop()
                     elif loggedIn:
                         if message["N"] == None:
@@ -65,12 +67,12 @@ class clientHandler(threading.Thread):
                             #read mode
                             enterRG(clientSocket, userID, n)
                         else:
-                            sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID), COLOR_ERROR))
+                            sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID + "\n"), COLOR_ERROR))
                             sys.stdout.flush()
                             res = responseBuilder(threadID, "Error", ("Unsupported command: " + msgType + " by client " + userID))
                             clientSocket.send(str.encode(json.dumps(res)))
                     else:
-                        sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID), COLOR_ERROR))
+                        sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID + "\n"), COLOR_ERROR))
                         sys.stdout.flush()
                         res = responseBuilder(threadID, "Error", ("Unsupported command: " + msgType + " by client " + userID))
                         clientSocket.send(str.encode(json.dumps(res)))
@@ -94,9 +96,9 @@ def responseBuilder(threadID, mtype, body):
         "type": mtype,
         "body": body
     }
-    sys.stdout.write(colored(json.dumps(response), COLOR_OUTGOING))
+    sys.stdout.write(colored((json.dumps(response) + "\n"), COLOR_OUTGOING))
     sys.stdout.flush()
-    sys.stdout.write(colored(("\nThread: " + threadID + json.dumps(response)), COLOR_OUTGOING))
+    sys.stdout.write(colored(("Thread: " + threadID + json.dumps(response) + "\n"), COLOR_OUTGOING))
     sys.stdout.flush()
     return response
 
