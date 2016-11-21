@@ -10,6 +10,26 @@ def establishConnection(ipaddr, port):
     cl_socket.connect((ipaddr, port))
     return cl_socket
 
+def receiveData(cSocket):
+    """
+    Receive all packets from server and return complete JSON object
+    """
+    print("enter receive\n")
+    rec = json.loads(bytes.decode(cSocket.recv(DEFAULT_SIZE)))
+    print(str(rec))
+    incomingPackets = rec["incoming"]
+    print(incomingPackets)
+    if incomingPackets == 1:
+        return json.loads(bytes.decode(cSocket.recv(DEFAULT_SIZE)))
+    else:
+        ret = ""
+        while incomingPackets > -1:
+            incomingPackets == incomingPackets - 1
+            ret = ret + bytes.decode(cSocket.recv(DEFAULT_SIZE))
+    return json.loads(ret)
+
+
+
 def main():
     """
     Main function
@@ -18,6 +38,7 @@ def main():
     """
     Vars
     """
+    global DEFAULT_SIZE
     DEFAULT_SIZE    = 4096
     DEFAULT_IP      = "127.0.0.1"
     DEFAULT_PORT    = 9390
@@ -51,7 +72,7 @@ def main():
                     "type":"help"
                 }
                 cl_socket.send(str.encode(json.dumps(message)))
-                rec = json.loads(bytes.decode(cl_socket.recv(DEFAULT_SIZE)))
+                rec = receiveData(cl_socket)
                 print (rec["body"])
             elif usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
                 message = {
@@ -72,7 +93,7 @@ def main():
                             "userID":usr_nm
                         }
                         cl_socket.send(str.encode(json.dumps(message)))
-                        rec = json.loads(bytes.decode(cl_socket.recv(DEFAULT_SIZE)))
+                        rec = receiveData(cl_socket)
                         if rec["type"].lower() == SUCCESS:
                             print ("User " + usr_nm + " succesfully logged in")
                         else:
@@ -85,8 +106,9 @@ def main():
                         "type":"logout"
                     }
                     cl_socket.send(str.encode(json.dumps(message)))
+                    rec = receiveData(cl_socket)
                     break
-
+        cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
     except IOError as err:
         print(str(err))
