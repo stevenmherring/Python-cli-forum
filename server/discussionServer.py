@@ -38,9 +38,9 @@ class clientHandler(threading.Thread):
         try:
             while self.alive:
                 try:
-                    req = bytes.decode((clientSocket.recv(PACKET_LENGTH)))
+                    req = receiveData(clientSocket)
                     print("REQ: " + str(req) + "\n")
-                    message = json.loads(req)
+                    message = req
                     msgType = message["type"].lower()
                     if not loggedIn and msgType == REQUEST_LOGIN:
                         userID = message["userID"]
@@ -51,9 +51,12 @@ class clientHandler(threading.Thread):
                         sendData(clientSocket, res)
                     elif msgType == REQUEST_LOGOUT:
                         logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
+                        delay(0.5) #need delay to give the client time to receive transmission and close.
+                        self.stop()
                     elif msgType == REQUEST_QUIT:
                         if loggedIn:
                             logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
+                        delay(0.5) #need delay to give the client time to receive transmission and close.
                         self.stop()
                     elif loggedIn:
                         if message["N"] == None:
@@ -99,8 +102,6 @@ def responseBuilder(threadID, mtype, body):
         "type": mtype,
         "body": body
     }
-    sys.stdout.write(colored((json.dumps(response) + "\n"), COLOR_OUTGOING))
-    sys.stdout.flush()
     sys.stdout.write(colored(("Thread: " + threadID + json.dumps(response) + "\n"), COLOR_OUTGOING))
     sys.stdout.flush()
     return response
@@ -176,6 +177,24 @@ def sendData(clientSocket, data):
             clientSocket.send(data[currentPos:endPos])
         currentPos = endPos
         packetsToSend = packetsToSend - 1
+
+def receiveData(cSocket):
+    """
+    Receive all packets from server and return complete JSON object
+    """
+    print("enter receive\n")
+    rec = json.loads(bytes.decode(cSocket.recv(PACKET_LENGTH)))
+    print(str(rec))
+    incomingPackets = rec["incoming"]
+    print(incomingPackets)
+    if incomingPackets == 1:
+        return json.loads(bytes.decode(cSocket.recv(PACKET_LENGTH)))
+    else:
+        ret = ""
+        while incomingPackets > -1:
+            incomingPackets == incomingPackets - 1
+            ret = ret + bytes.decode(cSocket.recv(PACKET_LENGTH))
+    return json.loads(ret)
 
 def loadGroups():
     """
@@ -267,7 +286,7 @@ def enterAG(clientSocket, userID, msgCount):
     sendData(clientSocket, str.encode(json.dumps(res)))
     while True:
         res = {}
-        req = bytes.decode(clientSocket.recv(PACKET_LENGTH))
+        message = receiveData(clientSocket)
         message = json.loads(req)
         msgType = message["type"].lower()
         if msgType != REQUEST_AG:
@@ -332,8 +351,7 @@ def enterSG(clientSocket, userID, msgCount):
     sendData(clientSocket, str.encode(json.dumps(res)))
     while True:
         res = {}
-        req = bytes.decode(clientSocket.recv(PACKET_LENGTH))
-        message = json.loads(req)
+        message = receiveData(clientSocket)
         msgType = message["type"].lower()
         if msgType != REQUEST_SG:
             res = responseBuilder(threadID, "Error", "Wrong mode type, in SG requesting " + msgType)
@@ -383,8 +401,7 @@ def enterRG(clientSocket, userID, msgCount, groupName):
     #build initial posting response ie. posts 1-msgCount
     while True:
         res = {}
-        req = bytes.decode(clientSocket.recv(PACKET_LENGTH))
-        message = json.loads(req)
+        message = receiveData(clientSocket)
         msgType = message["type"].lower()
         if msgType != REQUEST_RG:
             res = responseBuilder(threadID, "Error", "Wrong mode type, in RG requesting " + msgType)

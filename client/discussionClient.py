@@ -1,6 +1,6 @@
 from socket import *
 from termcolor import colored
-import sys, os, json
+import sys, os, json, math
 
 def establishConnection(ipaddr, port):
     """
@@ -28,7 +28,24 @@ def receiveData(cSocket):
             ret = ret + bytes.decode(cSocket.recv(DEFAULT_SIZE))
     return json.loads(ret)
 
-
+def sendData(clientSocket, data):
+    """
+    Divides data into sizable packets and sends them
+    """
+    packetsToSend = math.ceil(len(data) / DEFAULT_SIZE)
+    currentPos = 0
+    initMessage = {
+        "incoming": packetsToSend
+    }
+    clientSocket.send(str.encode(json.dumps(initMessage)))
+    while packetsToSend > 0:
+        endPos = currentPos + DEFAULT_SIZE
+        if packetsToSend == 1:
+            clientSocket.send(data[currentPos:])
+        else:
+            clientSocket.send(data[currentPos:endPos])
+        currentPos = endPos
+        packetsToSend = packetsToSend - 1
 
 def main():
     """
@@ -71,14 +88,14 @@ def main():
                 message = {
                     "type":"help"
                 }
-                cl_socket.send(str.encode(json.dumps(message)))
+                sendData(cl_socket, str.encode(json.dumps(message)))
                 rec = receiveData(cl_socket)
                 print (rec["body"])
             elif usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
                 message = {
                     "type":"quit"
                 }
-                cl_socket.send(str.encode(json.dumps(message)))
+                sendData(cl_socket, str.encode(json.dumps(message)))
                 sys.stdout.write(colored("Goodbye!\n", 'cyan'))
                 sys.stdout.flush()
                 cl_socket.close()
@@ -92,7 +109,7 @@ def main():
                             "type":"login",
                             "userID":usr_nm
                         }
-                        cl_socket.send(str.encode(json.dumps(message)))
+                        sendData(cl_socket, str.encode(json.dumps(message)))
                         rec = receiveData(cl_socket)
                         if rec["type"].lower() == SUCCESS:
                             print ("User " + usr_nm + " succesfully logged in")
@@ -105,7 +122,7 @@ def main():
                     message =  {
                         "type":"logout"
                     }
-                    cl_socket.send(str.encode(json.dumps(message)))
+                    sendData(cl_socket, str.encode(json.dumps(message)))
                     rec = receiveData(cl_socket)
                     break
         cl_socket.close()
