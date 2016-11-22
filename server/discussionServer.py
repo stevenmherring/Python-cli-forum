@@ -6,6 +6,7 @@ Python Discussion Application: Server
 
 from socket import *
 from termcolor import colored #for setting output color source: https://pypi.python.org/pypi/termcolor
+from da_protocols import sendData, receiveData
 import threading, sys, os, time, json, math
 
 class clientHandler(threading.Thread):
@@ -39,7 +40,7 @@ class clientHandler(threading.Thread):
         try:
             while self.alive:
                 try:
-                    req = receiveData(clientSocket)
+                    req = receiveData(clientSocket, PACKET_LENGTH, END_PACKET)
                     print("REQ: " + str(req) + "\n")
                     message = req
                     msgType = message["type"].lower()
@@ -49,7 +50,7 @@ class clientHandler(threading.Thread):
                     elif msgType == REQUEST_HELP:
                         res = helpMenu()
                         res = str.encode(json.dumps(res))
-                        sendData(clientSocket, res)
+                        sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
                     elif msgType == REQUEST_LOGOUT:
                         logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
                         delay(0.5) #need delay to give the client time to receive transmission and close.
@@ -77,12 +78,12 @@ class clientHandler(threading.Thread):
                             sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID + "\n"), COLOR_ERROR))
                             sys.stdout.flush()
                             res = responseBuilder(threadID, "Error", ("Unsupported command: " + msgType + " by client " + userID))
-                            sendData(clientSocket, res)
+                            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
                     else:
                         sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userID + "\n"), COLOR_ERROR))
                         sys.stdout.flush()
                         res = responseBuilder(threadID, "Error", ("Unsupported command: " + msgType + " by client " + userID))
-                        sendData(clientSocket, res)
+                        sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
 
                 except IOError as err:
                     sys.stdout.write(colored(err, COLOR_ERROR))
@@ -91,7 +92,7 @@ class clientHandler(threading.Thread):
                         "type": "Error",
                         "body": IO_ERROR
                     }
-                    sendData(clientSocket, res)
+                    sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
         finally:
             clientSocket.close()
 
@@ -160,51 +161,6 @@ def debugPrint(message):
         sys.stdout.write(colored(message, COLOR_DEBUG, None, ['underline']))
         sys.stdout.flush()
 
-def sendData(clientSocket, data):
-    """
-    Divides JSON object into sizable packets and sends them
-    """
-    data = json.dumps(data)
-    packetsToSend = math.ceil(len(data) / DEFAULT_SEND_SIZE)
-    currentPos = 0
-    initMessage = {
-        "incoming": packetsToSend
-    }
-    clientSocket.send(str.encode(json.dumps(initMessage) + END_PACKET))
-    while packetsToSend > 0:
-        endPos = currentPos + PACKET_LENGTH
-        if packetsToSend == 1:
-            clientSocket.send(str.encode(data[currentPos:] + END_PACKET))
-        else:
-            clientSocket.send(str.encode(data[currentPos:endPos]))
-        currentPos = endPos
-        packetsToSend = packetsToSend - 1
-
-def receiveData(cSocket):
-    """
-    Receive all packets from server and return complete JSON object
-    """
-    rec = cSocket.recv(PACKET_LENGTH)
-    rec = bytes.decode(rec)
-    rec = rec.rstrip(END_PACKET)
-    rec = rec.split(END_PACKET)
-    inc = json.loads(rec[0])
-    del rec[0]
-    incomingPackets = inc["incoming"]
-    ret = ""
-    for d in rec:
-        ret = ret + d
-    incomingPackets = incomingPackets - len(rec)
-    if incomingPackets == 1:
-        ret = ret + bytes.decode(cSocket.recv(PACKET_LENGTH))
-        ret = ret.rstrip(END_PACKET)
-    else:
-        while incomingPackets > 0:
-            incomingPackets == incomingPackets - 1
-            ret = ret + bytes.decode(cSocket.recv(PACKET_LENGTH))
-            ret = ret.rstrip(END_PACKET)
-    return json.loads(ret)
-
 def loadGroups():
     """
     Loads the groups on startup
@@ -246,12 +202,12 @@ def loginClient(clientSocket, userID, offline_clients, online_clients, loggedIn)
             offline_clients[:] = [client for client in offline_clients if client.get("id") != userID]
             loggedIn = True
             res = responseBuilder(threadID, "Success", ("User ID: " + userID + " logged in successfully."))
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return True
         else:
             #user doesn't exists
             res = responseBuilder(threadID, "Error", ("User ID: " + userID + " does not exist."))
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return False
 
 def logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn):
@@ -267,12 +223,12 @@ def logoutClient(clientSocket, userID, offline_clients, online_clients, loggedIn
             online_clients[:] = [client for client in online_clients if client.get("id") != userID]
             loggedIn = False
             res = responseBuilder(threadID, "Success", ("User ID: " + userID + " logged out successfully."))
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return True
         else:
             #user doesn't exists
             res = responseBuilder(threadID, "Error", ("User ID: " + userID + " does not exist."))
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return False
 
 def enterAG(clientSocket, userID, msgCount):
@@ -292,15 +248,15 @@ def enterAG(clientSocket, userID, msgCount):
     for i in range(messageCount, maxRange):
         with lock:
             res[groupList].add(groups[i])
-    sendData(clientSocket, res)
+    sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         res = {}
-        message = receiveData(clientSocket)
+        message = receiveData(clientSocket, PACKET_LENGTH, END_PACKET)
         message = json.loads(req)
         msgType = message["type"].lower()
         if msgType != REQUEST_AG:
             res = responseBuilder(threadID, "Error", "Wrong mode type, in AG requesting " + msgType)
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_S:
@@ -329,16 +285,16 @@ def enterAG(clientSocket, userID, msgCount):
             for i in range(messageCount, maxRange):
                 with lock:
                     res[groupList].add(groups[i])
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             #exits AG moder
             res = responseBuilder(threadID, "Success", "Exit AG Mode successfully.")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return True
         else:
             #bad command
             res = responseBuilder(threadID, "Error", "Bad command. Please refer to help")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
 
 def enterSG(clientSocket, userID, msgCount):
     """
@@ -357,14 +313,14 @@ def enterSG(clientSocket, userID, msgCount):
     for i in range(messageCount, maxRange):
         with lock:
             res[groupList].add(groups[i])
-    sendData(clientSocket, res)
+    sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         res = {}
-        message = receiveData(clientSocket)
+        message = receiveData(clientSocket, PACKET_LENGTH, END_PACKET)
         msgType = message["type"].lower()
         if msgType != REQUEST_SG:
             res = responseBuilder(threadID, "Error", "Wrong mode type, in SG requesting " + msgType)
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_U:
@@ -387,16 +343,16 @@ def enterSG(clientSocket, userID, msgCount):
             for i in range(messageCount, maxRange):
                 with lock:
                     res[groupList].add(groups[i])
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             #exits AG moder
             res = responseBuilder(threadID, "Success", "Exit SG Mode successfully.")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return True
         else:
             #bad command
             res = responseBuilder(threadID, "Error", "Bad command. Please refer to help")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
 
 def enterRG(clientSocket, userID, msgCount, groupName):
     """
@@ -410,17 +366,17 @@ def enterRG(clientSocket, userID, msgCount, groupName):
     #build initial posting response ie. posts 1-msgCount
     while True:
         res = {}
-        message = receiveData(clientSocket)
+        message = receiveData(clientSocket, PACKET_LENGTH, END_PACKET)
         msgType = message["type"].lower()
         if msgType != REQUEST_RG:
             res = responseBuilder(threadID, "Error", "Wrong mode type, in RG requesting " + msgType)
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_ID:
             #enter read post mode - this can be handled completely by the client side
             res = responseBuilder(threadID, "Error", "Client should store and handle the data read post mode, no need for server comm.")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_R:
             #mark post read
             postSubject = message["postSubject"]
@@ -436,10 +392,10 @@ def enterRG(clientSocket, userID, msgCount, groupName):
                     "body": "Updated Data",
                     "thread": currentGroup
                 }
-                sendData(clientSocket, res)
+                sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             else:
                 res = responseBuilder(threadID, "Success", "Data is current")
-                sendData(clientSocket, res)
+                sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_P:
             #makes a new post in groupName
             postData = message["body"]
@@ -447,12 +403,12 @@ def enterRG(clientSocket, userID, msgCount, groupName):
         elif subcommand == SUB_Q:
             #exits AG mode
             res = responseBuilder(threadID, "Success", "Exit RG Mode successfully.")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
             return True
         else:
             #bad command
             res = responseBuilder(threadID, "Error", "Bad command. Please refer to help")
-            sendData(clientSocket, res)
+            sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
 
 def markPost(userID, groupName, postSubject, postNumber, mark):
     """
@@ -471,11 +427,11 @@ def markPost(userID, groupName, postSubject, postNumber, mark):
                             if p["postNumber"] == postNumber:
                                 p["usersViewed"].append(userID)
                                 res = responseBuilder(threadID, "Success", "Post marked")
-                                sendData(clientSocket, res)
+                                sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
                             else:
                                 #error, postNumbers not aligned
                                 res = responseBuilder("Error", "Post Numbers Not Aligned")
-                                sendData(clientSocket, res)
+                                sendData(clientSocket, res, PACKET_LENGTH, END_PACKET)
 
 def createPost(userID, groupName, postData):
     """

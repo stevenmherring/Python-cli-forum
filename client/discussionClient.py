@@ -1,5 +1,6 @@
 from socket import *
 from termcolor import colored
+from da_protocols import sendData, receiveData
 import sys, os, json, math, time
 
 def establishConnection(ipaddr, port):
@@ -9,52 +10,6 @@ def establishConnection(ipaddr, port):
     cl_socket = socket(AF_INET, SOCK_STREAM)
     cl_socket.connect((ipaddr, port))
     return cl_socket
-
-def receiveData(cSocket):
-    """
-    Receive all packets from server and return complete JSON object
-    """
-    rec = cSocket.recv(DEFAULT_SIZE)
-    rec = bytes.decode(rec)
-    rec = rec.rstrip(END_PACKET)
-    rec = rec.split(END_PACKET)
-    inc = json.loads(rec[0])
-    del rec[0]
-    incomingPackets = inc["incoming"]
-    ret = ""
-    for d in rec:
-        ret = ret + d
-    incomingPackets = incomingPackets - len(rec)
-    if incomingPackets == 1:
-        ret = ret + bytes.decode(cSocket.recv(DEFAULT_SIZE))
-        ret = ret.rstrip(END_PACKET)
-    else:
-        while incomingPackets > 0:
-            incomingPackets == incomingPackets - 1
-            ret = ret + bytes.decode(cSocket.recv(DEFAULT_SIZE))
-            ret = ret.rstrip(END_PACKET)
-    return json.loads(ret)
-
-def sendData(clientSocket, data):
-    """
-    Divides data into sizable packets and sends them
-    """
-    data = json.dumps(data)
-    packetsToSend = math.ceil(len(data) / DEFAULT_SEND_SIZE)
-    currentPos = 0
-    initMessage = {
-        "incoming": packetsToSend
-    }
-    clientSocket.send(str.encode(json.dumps(initMessage) + END_PACKET))
-    time.sleep(1)
-    while packetsToSend > 0:
-        endPos = currentPos + DEFAULT_SIZE
-        if packetsToSend == 1:
-            clientSocket.send(str.encode(data[currentPos:] + END_PACKET))
-        else:
-            clientSocket.send(str.encode(data[currentPos:endPos]))
-        currentPos = endPos
-        packetsToSend = packetsToSend - 1
 
 def main():
     """
@@ -79,7 +34,7 @@ def main():
     ERROR           = "error"
 
     END_PACKET      = "/*/!/$/*"
-    DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
+    #DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
 
     logged = False
     usr_nm = ''
@@ -102,14 +57,14 @@ def main():
                 message = {
                     "type":"help"
                 }
-                sendData(cl_socket, message)
-                rec = receiveData(cl_socket)
+                sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                rec = receiveData(cl_socket, DEFAULT_SIZE, END_PACKET)
                 print (rec["body"])
             elif usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
                 message = {
                     "type":"quit"
                 }
-                sendData(cl_socket, message)
+                sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                 sys.stdout.write(colored("Goodbye!\n", 'cyan'))
                 sys.stdout.flush()
                 cl_socket.close()
@@ -123,8 +78,8 @@ def main():
                             "type":"login",
                             "userID":usr_nm
                         }
-                        sendData(cl_socket, message)
-                        rec = receiveData(cl_socket)
+                        sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receiveData(cl_socket, DEFAULT_SIZE, END_PACKET)
                         if rec["type"].lower() == SUCCESS:
                             print ("User " + usr_nm + " succesfully logged in")
                         else:
@@ -136,7 +91,7 @@ def main():
                     message =  {
                         "type":"logout"
                     }
-                    sendData(cl_socket, message)
+                    sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     break
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
