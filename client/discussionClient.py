@@ -57,14 +57,14 @@ def main():
                 message = {
                     "type":"help"
                 }
-                sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
-                rec = receiveData(cl_socket, DEFAULT_SIZE, END_PACKET)
+                senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                 print (rec["body"])
             elif usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
                 message = {
                     "type":"quit"
                 }
-                sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                 sys.stdout.write(colored("Goodbye!\n", 'cyan'))
                 sys.stdout.flush()
                 cl_socket.close()
@@ -78,8 +78,8 @@ def main():
                             "type":"login",
                             "userID":usr_nm
                         }
-                        sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
-                        rec = receiveData(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                         if rec["type"].lower() == SUCCESS:
                             print ("User " + usr_nm + " succesfully logged in")
                         else:
@@ -91,7 +91,7 @@ def main():
                     message =  {
                         "type":"logout"
                     }
-                    sendData(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                    senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     break
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
