@@ -1,15 +1,17 @@
 from socket import *
 from termcolor import colored
-from da_protocols import sendData, receiveData
-import sys, os, json, math, time
+from da_protocols import senddata, receivedata
+import sys, os, json, time
 
-def establishConnection(ipaddr, port):
+
+def establishconnection(ipaddr, port):
     """
     Establish and return connection socket to server
     """
     cl_socket = socket(AF_INET, SOCK_STREAM)
     cl_socket.connect((ipaddr, port))
     return cl_socket
+
 
 def main():
     """
@@ -19,9 +21,6 @@ def main():
     """
     Vars
     """
-    global DEFAULT_SIZE
-    global END_PACKET
-    global DEFAULT_SEND_SIZE
     DEFAULT_SIZE    = 4096
     DEFAULT_IP      = "127.0.0.1"
     DEFAULT_PORT    = 9390
@@ -32,23 +31,24 @@ def main():
     INPUT_Q         = "q"
     SUCCESS         = "success"
     ERROR           = "error"
-
     END_PACKET      = "/*/!/$/*"
-    #DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
+    global DEFAULT_SIZE
+    global END_PACKET
+    global DEFAULT_SEND_SIZE
+
+    # DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
 
     logged = False
     usr_nm = ''
 
-    ipaddr = ''
-
-    #fetch arguments
+    # fetch arguments
     if len(sys.argv) < 1:
         print("Not enough arguments, must include IP...IE: python discussionClient.py 127.0.0.1")
         sys.exit(1)
     ipaddr = sys.argv[1]
-    cl_socket = establishConnection(ipaddr, DEFAULT_PORT)
+    cl_socket = establishconnection(ipaddr, DEFAULT_PORT)
     try:
-        #print "Attempting to connect to " + ipaddr + ":" + DEFAULT_PORT
+        # print "Attempting to connect to " + ipaddr + ":" + DEFAULT_PORT
         while True:
             usr_input = input("> ").split(' ')
             sys.stdout.write(colored(("Input: " + str(usr_input[0]) + "\n"), 'red'))
