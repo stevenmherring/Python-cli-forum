@@ -21,6 +21,9 @@ def main():
     """
     Vars
     """
+    global DEFAULT_SIZE
+    global END_PACKET
+    global DEFAULT_SEND_SIZE
     DEFAULT_SIZE    = 4096
     DEFAULT_IP      = "127.0.0.1"
     DEFAULT_PORT    = 9390
@@ -32,9 +35,6 @@ def main():
     SUCCESS         = "success"
     ERROR           = "error"
     END_PACKET      = "/*/!/$/*"
-    global DEFAULT_SIZE
-    global END_PACKET
-    global DEFAULT_SEND_SIZE
 
     # DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
 

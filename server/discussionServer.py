@@ -10,7 +10,7 @@ from da_protocols import senddata, receivedata
 import threading, sys, os, time, json
 
 
-class clientHandler(threading.Thread):
+class ClientHandler(threading.Thread):
     """
     Handles new Client connections
     """
@@ -26,11 +26,14 @@ class clientHandler(threading.Thread):
         self.alive = False
 
     def run(self):
+        global threadid
+        global offline_clients
+        global online_clients
+        global loggedin
         clientsocket = self.clientsocket
         clientaddr = self.clientaddr
         threadid = self.threadid
         loggedin = False
-        global loggedin
         updateprint((".....New Client Connected: " + str(clientaddr) + "\n"), COLOR_OUTGOING)
         userid = ""
         try:
@@ -41,7 +44,7 @@ class clientHandler(threading.Thread):
                     message = req
                     msgType = message["type"].lower()
                     if not loggedin and msgType == REQUEST_LOGIN:
-                        userid = message["userid"]
+                        userid = message["userID"]
                         loginclient(clientsocket, userid, offline_clients, online_clients, loggedin)
                     elif msgType == REQUEST_HELP:
                         res = helpmenu()
@@ -169,12 +172,12 @@ def loadgroups():
     """
     global groups
     global lock
-    #l oad groups
+    # load groups
     typeprint("Populating discussion groups....\n", COLOR_TASK_START)
     with lock:
         with open(os.path.join(__location__, GROUPS_DATA_FILE), "r") as f:
-            groupsData = json.loads(f.read())
-            groups = groupsData["groups"]
+            groupsdata = json.loads(f.read())
+            groups = groupsdata["groups"]
     typeprint(".......Discussion groups populated!!!\n", COLOR_TASK_FINISH)
 
 
@@ -200,7 +203,7 @@ def loginclient(clientsocket, userid, offline_clients, online_clients, loggedin)
     global lock
     with lock:
         clientdata = next((client for client in offline_clients if client["id"] == userid), None)
-        if clientdata != None:
+        if clientdata is not None:
             online_clients.append(clientdata)
             offline_clients[:] = [client for client in offline_clients if client.get("id") != userid]
             loggedin = True
@@ -517,7 +520,7 @@ def beginlistening(serverSocket):
         sys.stdout.flush()
         #accept client
         clientsocket, clientaddr = serverSocket.accept()
-        newThread = clientHandler(str(threadCount), clientsocket, clientaddr)
+        newThread = ClientHandler(str(threadCount), clientsocket, clientaddr)
         threadCount = threadCount + 1
         newThread.start()
 
@@ -530,39 +533,33 @@ def main():
     """
     Default APP info
     """
-    AUTHOR_FILE = "../AUTHORS"
+    global __location__
     global AUTHOR_FILE
+    AUTHOR_FILE = "../AUTHORS"
 
     """
     String Messages
     """
-    IO_ERROR = "IO Error, terminating connection.\n"
     global IO_ERROR
+    IO_ERROR = "IO Error, terminating connection.\n"
 
     """
     Color definitions
     """
-    COLOR_ERROR = "red"
-    COLOR_IMPORTANT = "cyan"
-    COLOR_OUTGOING = "magenta"
-    COLOR_TASK_START = "blue"
-    COLOR_TASK_FINISH = "white"
     global COLOR_ERROR
     global COLOR_IMPORTANT
     global COLOR_OUTGOING
     global COLOR_TASK_START
     global COLOR_TASK_FINISH
+    COLOR_ERROR = "red"
+    COLOR_IMPORTANT = "cyan"
+    COLOR_OUTGOING = "magenta"
+    COLOR_TASK_START = "blue"
+    COLOR_TASK_FINISH = "white"
 
     """
     Client commands
     """
-    REQUEST_LOGIN = "login"
-    REQUEST_LOGOUT = "logout"
-    REQUEST_HELP = "help"
-    REQUEST_AG = "ag"
-    REQUEST_SG = "sg"
-    REQUEST_RG = "rg"
-    REQUEST_QUIT = "quit"
     global REQUEST_LOGIN
     global REQUEST_AG
     global REQUEST_HELP
@@ -570,14 +567,14 @@ def main():
     global REQUEST_SG
     global REQUEST_RG
     global REQUEST_QUIT
+    REQUEST_LOGIN = "login"
+    REQUEST_LOGOUT = "logout"
+    REQUEST_HELP = "help"
+    REQUEST_AG = "ag"
+    REQUEST_SG = "sg"
+    REQUEST_RG = "rg"
+    REQUEST_QUIT = "quit"
 
-    SUB_S = "s"
-    SUB_U = "u"
-    SUB_N = "n"
-    SUB_Q = "q"
-    SUB_ID = "id"
-    SUB_R = "r"
-    SUB_P = "p"
     global SUB_S
     global SUB_U
     global SUB_N
@@ -585,54 +582,61 @@ def main():
     global SUB_ID
     global SUB_R
     global SUB_P
+    SUB_S = "s"
+    SUB_U = "u"
+    SUB_N = "n"
+    SUB_Q = "q"
+    SUB_ID = "id"
+    SUB_R = "r"
+    SUB_P = "p"
 
     """
     Socket Information
     """
-    PACKET_LENGTH = 4096
-    PORT_NUMBER = 9390
-    END_PACKET = "/*/!/$/*"
-    DEFAULT_SEND_SIZE = PACKET_LENGTH - len(END_PACKET)
     global PACKET_LENGTH
     global PORT_NUMBER
     global END_PACKET
     global DEFAULT_SEND_SIZE
+    PACKET_LENGTH = 4096
+    PORT_NUMBER = 9390
+    END_PACKET = "/*/!/$/*"
+    DEFAULT_SEND_SIZE = PACKET_LENGTH - len(END_PACKET)
 
     """
     Default Server Values
     """
-    CLIENT_DATA_FILE = "clients/ids.json"
-    GROUPS_PATH = "groups/"
-    GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
-    DEFAULT_N = 3
-    DELAY_PRINT = 0.025
-    MAX_CLIENTS = 50
     global CLIENT_DATA_FILE
     global GROUPS_PATH
     global GROUPS_DATA_FILE
     global DEFAULT_N
     global DELAY_PRINT
     global MAX_CLIENTS
+    CLIENT_DATA_FILE = "clients/ids.json"
+    GROUPS_PATH = "groups/"
+    GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
+    DEFAULT_N = 3
+    DELAY_PRINT = 0.025
+    MAX_CLIENTS = 50
 
     """
     Server data
     """
-    lock = threading.Lock()
-    offline_clients = []
-    online_clients = []
-    groups = {} # pull from groups directory, each subdir is a group with *.txt files for each thread
     global lock
     global offline_clients
     global online_clients
     global groups
+    lock = threading.Lock()
+    offline_clients = []
+    online_clients = []
+    groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
 
     """
     Debug Stuff
     """
-    debugMode = False
-    COLOR_DEBUG = "red"
     global debugMode
     global COLOR_DEBUG
+    debugMode = False
+    COLOR_DEBUG = "red"
 
     # preload group and client information
     for s in sys.argv:
@@ -641,7 +645,6 @@ def main():
             debugprint("DEBUG MODE ENABLED\nDebug messages will appear similar to this one.\n")
     typeprint("Launching Discussion Server...\n", 'yellow')
     __location__ = initlocation()
-    global __location__
     loadauthors()
     loadgroups()
     debugprint(str(groups) + "\n")
