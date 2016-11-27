@@ -5,7 +5,7 @@ Python Discussion Application: Server
 """
 
 from socket import *
-from termcolor import colored # for setting output color source: https://pypi.python.org/pypi/termcolor
+from termcolor import colored  # for setting output color source: https://pypi.python.org/pypi/termcolor
 from da_protocols import senddata, receivedata
 import threading, sys, os, time, json
 
@@ -14,11 +14,12 @@ class ClientHandler(threading.Thread):
     """
     Handles new Client connections
     """
-    def __init__(self, threadid, clientsocket, clientaddr):
+    def __init__(self, threadid, clientsocket, clientaddr, lock):
         threading.Thread.__init__(self)
         self.threadid = threadid
         self.clientsocket = clientsocket
         self.clientaddr = clientaddr
+        self.lock = lock
         self.alive = True
 
     def stop(self):
@@ -33,7 +34,9 @@ class ClientHandler(threading.Thread):
         clientsocket = self.clientsocket
         clientaddr = self.clientaddr
         threadid = self.threadid
+        lock = self.lock
         loggedin = False
+        current_client = {}
         updateprint((".....New Client Connected: " + str(clientaddr) + "\n"), COLOR_OUTGOING)
         userid = ""
         try:
@@ -45,19 +48,18 @@ class ClientHandler(threading.Thread):
                     msgType = message["type"].lower()
                     if not loggedin and msgType == REQUEST_LOGIN:
                         userid = message["userID"]
-                        loginclient(clientsocket, userid, offline_clients, online_clients, loggedin)
+                        loggedin, current_client = loginclient(clientsocket, userid, offline_clients, online_clients, lock)
                     elif msgType == REQUEST_HELP:
                         res = helpmenu()
-                        res = str.encode(json.dumps(res))
                         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
                     elif msgType == REQUEST_LOGOUT:
-                        logoutclient(clientsocket, userid, offline_clients, online_clients, loggedin)
-                        delay(0.5) # need delay to give the client time to receive transmission and close.
+                        loggedin = not logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
+                        delay(0.5)  # need delay to give the client time to receive transmission and close.
                         self.stop()
                     elif msgType == REQUEST_QUIT:
                         if loggedin:
-                            logoutclient(clientsocket, userid, offline_clients, online_clients, loggedin)
-                        delay(0.5) # need delay to give the client time to receive transmission and close.
+                            loggedin = not logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
+                        delay(0.5)  # need delay to give the client time to receive transmission and close.
                         self.stop()
                     elif loggedin:
                         if message["N"] is None:
@@ -66,22 +68,26 @@ class ClientHandler(threading.Thread):
                             n = int(message["N"])
                         if msgType == REQUEST_AG:
                             # available mode
-                            enter_ag_mode(clientsocket, userid, n)
+                            enter_ag_mode(clientsocket, current_client, n, groups, lock)
                         elif msgType == REQUEST_SG:
                             # subscribe mode
-                            enter_sg_mode(clientsocket, userid, n)
+                            enter_sg_mode(clientsocket, current_client, n, groups, lock)
                         elif msgType == REQUEST_RG:
                             # read mode
-                            enter_rg_mode(clientsocket, userid, n)
+                            enter_rg_mode(clientsocket, current_client, n, groupName, groups, lock)
                         else:
-                            sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n"), COLOR_ERROR))
+                            sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n")
+                                                     , COLOR_ERROR))
                             sys.stdout.flush()
-                            res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client " + userid))
+                            res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client "
+                                                                      + userid))
                             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
                     else:
-                        sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n"), COLOR_ERROR))
+                        sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n"),
+                                                 COLOR_ERROR))
                         sys.stdout.flush()
-                        res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client " + userid))
+                        res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client "
+                                                                  + userid))
                         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
                 except IOError as err:
@@ -136,6 +142,7 @@ def helpmenu():
         "type": "Success",
         "body": usage
     }
+    print(str(response))
     return response
 
 
@@ -166,12 +173,10 @@ def debugprint(message):
         sys.stdout.flush()
 
 
-def loadgroups():
+def loadgroups(lock):
     """
     Loads the groups on startup
     """
-    global groups
-    global lock
     # load groups
     typeprint("Populating discussion groups....\n", COLOR_TASK_START)
     with lock:
@@ -179,56 +184,56 @@ def loadgroups():
             groupsdata = json.loads(f.read())
             groups = groupsdata["groups"]
     typeprint(".......Discussion groups populated!!!\n", COLOR_TASK_FINISH)
+    return groups
 
 
-def loadclients():
+def loadclients(lock):
     """
     Loads the clients on startup from client file
     """
-    global offline_clients
-    global lock
     # load clients
     typeprint("Populating client data....\n", COLOR_TASK_START)
     with lock:
         with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
             clientdata = json.loads(f.read())
-            offline_clients = clientdata["clients"]
+            clients = clientdata["clients"]
     typeprint(".......Client data populated!!!\n", COLOR_TASK_FINISH)
+    return clients
 
 
-def loginclient(clientsocket, userid, offline_clients, online_clients, loggedin):
+def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
     """
     Checks if the user is logged off & exits then logs them in
     """
-    global lock
     with lock:
         clientdata = next((client for client in offline_clients if client["id"] == userid), None)
         if clientdata is not None:
             online_clients.append(clientdata)
             offline_clients[:] = [client for client in offline_clients if client.get("id") != userid]
-            loggedin = True
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " logged in successfully."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-            return True
+            return True, clientdata
         else:
             # user doesn't exists
             res = responsebuilder(threadid, "Error", ("User ID: " + userid + " does not exist."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-            return False
+            return False, None
 
 
-def logoutclient(clientsocket, userid, offline_clients, online_clients, loggedin):
+def logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock):
     """
     Checks if the user is logged in and logs them out
     """
-    global lock
-
+    if current_client is None:
+        res = responsebuilder(threadid, "Error", "No users logged in")
+        senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+        return False
     with lock:
-        clientdata = next((client for client in online_clients if client["id"] == userid), None)
-        if clientdata != None:
-            offline_clients.append(clientdata)
+        #lientdata = next((client for client in online_clients if client["id"] == userid), None)
+        #if clientdata is not None:
+        if current_client in online_clients:
+            offline_clients.append(current_client)
             online_clients[:] = [client for client in online_clients if client.get("id") != userid]
-            loggedin = False
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " logged out successfully."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True
@@ -239,11 +244,10 @@ def logoutclient(clientsocket, userid, offline_clients, online_clients, loggedin
             return False
 
 
-def enter_ag_mode(clientsocket, userid, msgcount):
+def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
     """
     Available Group Mode, Allows user to use special commands s, u, n, q
     """
-    global groups
     messagecount = 0
     res = {
         "type": "Success",
@@ -255,7 +259,7 @@ def enter_ag_mode(clientsocket, userid, msgcount):
         maxrange = messagecount + msgcount
     for i in range(messagecount, maxrange):
         with lock:
-            res[groupList].add(groups[i])
+            res["groupList"].add(groups[i])
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -266,19 +270,18 @@ def enter_ag_mode(clientsocket, userid, msgcount):
             return False
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_S:
-            #subscribe groups
+            # subscribe groups
             selections = message["selections"]
             for s in selections:
-                if s not in clients[userid]["subscriptions"]:
-                    clients[userid]["subscriptions"].append(s)
+                if s not in current_client["subscriptions"]:
+                    current_client["subscriptions"].append(s)
         elif subcommand == SUB_U:
-            #unsubscribed
+            # unsubscribed
             selections = message["selections"]
             for s in selections:
-                if s in clients[userid]["subscriptions"]:
-                    clients[userid]["subscriptions"].remove(s)
+                    current_client["subscriptions"].remove(s)
         elif subcommand == SUB_N:
-            #lists next N groups
+            # lists next N groups
             msgcount = int(message["N"])
             res = {
                 "type": "Success",
@@ -290,7 +293,7 @@ def enter_ag_mode(clientsocket, userid, msgcount):
                 maxrange = messagecount + msgcount
             for i in range(messagecount, maxrange):
                 with lock:
-                    res[groupList].add(groups[i])
+                    res["groupList"].add(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             # exits AG moder
@@ -303,12 +306,10 @@ def enter_ag_mode(clientsocket, userid, msgcount):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def enter_sg_mode(clientsocket, userid, msgCount):
+def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
     """
     Subscribed Group Mode, Allows user to use special commands u, n, q
     """
-    global groups
-    global groupList
     messageCount = 0
     res = {
         "type": "Success",
@@ -320,7 +321,7 @@ def enter_sg_mode(clientsocket, userid, msgCount):
         maxRange = messageCount + msgCount
     for i in range(messageCount, maxRange):
         with lock:
-            res[groupList].add(groups[i])
+            res["groupList"].add(groups[i])
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -334,8 +335,8 @@ def enter_sg_mode(clientsocket, userid, msgCount):
             # unsubscribed
             selections = message["selections"]
             for s in selections:
-                if s in clients[userid]["subscriptions"]:
-                    clients[userid]["subscriptions"].remove(s)
+                if s in current_client["subscriptions"]:
+                    current_client["subscriptions"].remove(s)
         elif subcommand == SUB_N:
             # lists next N groups
             msgCount = int(message["N"])
@@ -343,13 +344,13 @@ def enter_sg_mode(clientsocket, userid, msgCount):
                 "type": "Success",
                 "groupList": []
             }
-            if (messageCount + msgCount) > len(groups):
-                maxRange = len(groups)
-            else:
-                maxRange = messageCount + msgCount
-            for i in range(messageCount, maxRange):
-                with lock:
-                    res[groupList].add(groups[i])
+            with lock:
+                if (messageCount + msgCount) > len(groups):
+                    maxRange = len(groups)
+                else:
+                    maxRange = messageCount + msgCount
+                for i in range(messageCount, maxRange):
+                    res["groupList"].add(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             # exits AG moder
@@ -362,12 +363,12 @@ def enter_sg_mode(clientsocket, userid, msgCount):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def enter_rg_mode(clientsocket, userid, msgCount, groupName):
+def enter_rg_mode(clientsocket, current_client, msgCount, groupName, groups, lock):
     """
     Read Group Mode, Allows user to use special commands [id], r, n, p, q
     """
-    global groups
-    currentGroup = loadcurrentgroup(groupName)
+    userid = current_client["id"]
+    current_group = loadcurrentgroup(groupName, groups, lock)
     # build initial posting response ie. posts 1-msgCount
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -385,16 +386,16 @@ def enter_rg_mode(clientsocket, userid, msgCount, groupName):
             # mark post read
             postSubject = message["postSubject"]
             postNum = message["postNumber"]
-            markpost(clientsocket, userid, groupName, postSubject, postNum, "r")
+            markpost(clientsocket, userid, groupName, postSubject, postNum, lock, "r")
         elif subcommand == SUB_N:
             # lists next N posts in groupName
             # TODO this needs to confirm there arent new posts with the server...if no new posts, client handles it...if new posts, resend the post lists
-            if not isgroupcurrent(currentGroup, groupName):
-                currentGroup = loadcurrentgroup
+            if not isgroupcurrent(current_group, groupName, groups, lock):
+                current_group = loadcurrentgroup(groupName, groups, lock)
                 res = {
                     "type": "Error",
                     "body": "Updated Data",
-                    "thread": currentGroup
+                    "thread": current_group
                 }
                 senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             else:
@@ -403,7 +404,7 @@ def enter_rg_mode(clientsocket, userid, msgCount, groupName):
         elif subcommand == SUB_P:
             # makes a new post in groupName
             postData = message["body"]
-            createpost(userid, postData)
+            # createpost(userid, postData)
         elif subcommand == SUB_Q:
             # exits AG mode
             res = responsebuilder(threadid, "Success", "Exit RG Mode successfully.")
@@ -415,15 +416,14 @@ def enter_rg_mode(clientsocket, userid, msgCount, groupName):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def markpost(clientsocket, userid, groupName, postSubject, postNumber, mark):
+def markpost(clientsocket, userid, groupname, postSubject, postNumber, lock, mark):
     """
     Marks a post as Read, Unread etc...based on 'r', 'u'
     Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
-    global lock
     with lock:
         for d in groups:
-            if d["name"] == groupName:
+            if d["name"] == groupname:
                 with open(os.path.join(__location__, d["path"]), "rw") as f:
                     subjects = json.loads(f.read())
                     for s in subjects:
@@ -439,38 +439,35 @@ def markpost(clientsocket, userid, groupName, postSubject, postNumber, mark):
                                 senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def createpost(userid, groupName, postData):
+def createpost(current_client, groupname, groups, lock, postData):
     """
     Creates a post from user
     """
     #TODO
-    global groups
     for d in groups:
-        if d["name"] == groupName:
+        if d["name"] == groupname:
             with open(os.path.join(__location__, d["path"]), "rw") as f:
                 subjects = json.loads(f.read())
 
 
-def isgroupcurrent(currentGroup, groupName):
+def isgroupcurrent(currentgroup, groupname, groups, lock):
     """
     Checks if currentGroup data is up to date with groupName
     """
-    global lock
-    cgTime = currentGroup["last_modified"]
+    cg_time = currentgroup["last_modified"]
     with lock:
         for d in groups:
-            if d["name"] == groupName:
-                if cgTime == d["last_modified"]:
+            if d["name"] == groupname:
+                if cg_time == d["last_modified"]:
                     return True
                 else:
                     return False
 
 
-def loadcurrentgroup(groupName):
+def loadcurrentgroup(groupName, groups, lock):
     """
     Returns specific group data
     """
-    global lock
     ret = {}
     with lock:
         for d in groups:
@@ -479,18 +476,18 @@ def loadcurrentgroup(groupName):
     return ret
 
 
-def loadauthors():
+def loadauthors(path):
     """
     Loads author information from ../AUTHORS
     """
-    global authors
     typeprint("Loading Application Information...\n", COLOR_TASK_START)
     try:
-        with open(os.path.join(__location__, AUTHOR_FILE), "r") as f:
+        with open(path, "r") as f:
             authors = f.read().splitlines()
     except IOError as err:
         debugprint(str(err))
     typeprint("....Application Information Loaded!!\n", COLOR_TASK_FINISH)
+    return authors
 
 
 def initlocation():
@@ -509,7 +506,7 @@ def delay(t):
     time.sleep(t)
 
 
-def beginlistening(serverSocket):
+def beginlistening(serverSocket, lock):
     """
     Listens for clients, spawns and sends client to new thread.
     """
@@ -518,10 +515,10 @@ def beginlistening(serverSocket):
     while True:
         sys.stdout.write(colored("Waiting for clients...\n", COLOR_IMPORTANT))
         sys.stdout.flush()
-        #accept client
+        # accept client
         clientsocket, clientaddr = serverSocket.accept()
-        newThread = ClientHandler(str(threadCount), clientsocket, clientaddr)
-        threadCount = threadCount + 1
+        newThread = ClientHandler(str(threadCount), clientsocket, clientaddr, lock)
+        threadCount += 1
         newThread.start()
 
 
@@ -535,6 +532,7 @@ def main():
     """
     global __location__
     global AUTHOR_FILE
+    global authors
     AUTHOR_FILE = "../AUTHORS"
 
     """
@@ -621,11 +619,10 @@ def main():
     """
     Server data
     """
-    global lock
     global offline_clients
     global online_clients
     global groups
-    lock = threading.Lock()
+    mainlock = threading.Lock()
     offline_clients = []
     online_clients = []
     groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
@@ -645,17 +642,17 @@ def main():
             debugprint("DEBUG MODE ENABLED\nDebug messages will appear similar to this one.\n")
     typeprint("Launching Discussion Server...\n", 'yellow')
     __location__ = initlocation()
-    loadauthors()
-    loadgroups()
+    authors = loadauthors(os.path.join(__location__, AUTHOR_FILE))
+    groups = loadgroups(mainlock)
     debugprint(str(groups) + "\n")
-    loadclients()
+    offline_clients = loadclients(mainlock)
     debugprint(str(offline_clients) + "\n")
-    serverSocket = socket(AF_INET, SOCK_STREAM)
-    serverSocket.bind(("", PORT_NUMBER))
-    serverSocket.listen(MAX_CLIENTS)
-    beginlistening(serverSocket)
+    server_socket = socket(AF_INET, SOCK_STREAM)
+    server_socket.bind(("", PORT_NUMBER))
+    server_socket.listen(MAX_CLIENTS)
+    beginlistening(server_socket, mainlock)
     # cleanup
-    serverSocket.close()
+    server_socket.close()
 
 
 if __name__ == '__main__':

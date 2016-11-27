@@ -73,7 +73,6 @@ def main():
                 if usr_input[0] == INPUT_LOGIN :
                     if len(usr_input) > 1:
                         usr_nm = usr_input[1]
-                        logged = True
                         message =  {
                             "type":"login",
                             "userID":usr_nm
@@ -81,8 +80,11 @@ def main():
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                         rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                         if rec["type"].lower() == SUCCESS:
+                            logged = True
                             print ("User " + usr_nm + " succesfully logged in")
                         else:
+                            logged = False
+                            usr_nm = ""
                             print ("Error, User " + usr_nm + " not logged in")
                 else:
                     print("Not logged in\n")
