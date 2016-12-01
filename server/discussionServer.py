@@ -28,8 +28,6 @@ class ClientHandler(threading.Thread):
 
     def run(self):
         global threadid
-        global offline_clients
-        global online_clients
         global loggedin
         clientsocket = self.clientsocket
         clientaddr = self.clientaddr
@@ -48,14 +46,14 @@ class ClientHandler(threading.Thread):
                     msgType = message["type"].lower()
                     if not loggedin and msgType == REQUEST_LOGIN:
                         userid = message["userID"]
-                        loggedin, current_client = loginclient(clientsocket, userid, offline_clients, online_clients, lock)
+                        loggedin, current_client = loginclient(clientsocket, userid, lock)
                         print("logged in")
                         print(str(current_client))
                     elif msgType == REQUEST_HELP:
                         res = helpmenu()
                         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
                     elif msgType == REQUEST_LOGOUT:
-                        loggedin = logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
+                        loggedin = logoutclient(clientsocket, userid, current_client, lock)
                         loggedin = False
                         print("logged out")
                         print(str(current_client))
@@ -63,7 +61,7 @@ class ClientHandler(threading.Thread):
                         delay(0.5)  # need delay to give the client time to receive transmission and close.
                     elif msgType == REQUEST_QUIT:
                         if loggedin:
-                            loggedin = not logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
+                            loggedin = not logoutclient(clientsocket, userid, current_client, lock)
                         delay(0.5)  # need delay to give the client time to receive transmission and close.
                         self.stop()
                     elif loggedin:
@@ -217,6 +215,7 @@ def createclient(clientID, lock):
     """
     Creates a default client and adds it to the list
     """
+    global clients
     global id_list
     print("client_create")
     new_id = -1
@@ -230,28 +229,37 @@ def createclient(clientID, lock):
     addition.update({"id": new_id})
     addition.update({"name": clientID})
     addition.update({"subscriptions": []})
+    addition.update({"logged_flag": 0})
     print(addition)
 
     id_list.append(new_id)
-    with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
-        clientdata = json.loads(f.read())
-        clients = clientdata["clients"]
     clients.append(addition)
-    with open(os.path.join(__location__, CLIENT_DATA_FILE), "w") as f:
-        json.dump(clientdata, f)
-
+    updateclients()
     return addition
 
 
-def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
+def updateclients():
+    """
+    Updates the client data files
+    """
+    temp = CLIENT_FILE_STRUCT
+    temp["clients"] = clients
+    with open(os.path.join(__location__, CLIENT_DATA_FILE), "w") as f:
+        json.dump(temp, f)
+
+
+def loginclient(clientsocket, userid, lock):
     """
     Checks if the user is logged off & exits then logs them in
     """
+    global clients
     with lock:
-        clientdata = next((client for client in offline_clients if client["id"] == userid), None)
+        clientdata = next((client for client in clients if client["id"] == userid), None)
         if clientdata is not None:
-            online_clients.append(clientdata)
-            offline_clients[:] = [client for client in offline_clients if client.get("id") != userid]
+            clientdata["logged_flag"] = 1  # 1 = loggedin, 0 = loggedout
+
+            # online_clients.append(clientdata)
+            # offline_clients[:] = [client for client in offline_clients if client.get("id") != userid]
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " logged in successfully."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True, clientdata
@@ -264,31 +272,33 @@ def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
             
             clientdata = createclient(userid, lock)
             # We will create the user pool
-            online_clients.append(clientdata)
+            clientdata["logged_flag"] = 1
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " was created and logged in."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True, clientdata
 
 
-def logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock):
+def logoutclient(clientsocket, userid, current_client, lock):
     """
     Checks if the user is logged in and logs them out
     """
+    global clients
     if current_client == {}:
         res = responsebuilder(threadid, "Error", "No users logged in")
         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         return False
     with lock:
-        #lientdata = next((client for client in online_clients if client["id"] == userid), None)
-        #if clientdata is not None:
-        if current_client in online_clients:
-            offline_clients.append(current_client)
-            online_clients[:] = [client for client in online_clients if client.get("id") != userid]
-            res = responsebuilder(threadid, "Success", ("User ID: " + userid + " logged out successfully."))
-            senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-            return True
+        # lientdata = next((client for client in online_clients if client["id"] == userid), None)
+        # if clientdata is not None:
+        for c in clients:
+            if c["id"] == current_client["id"]:
+                c["logged_flag"] = 0
+                res = responsebuilder(threadid, "Success", ("User ID: " + userid + " logged out successfully."))
+                senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+                return True
+
         else:
-            #user doesn't exists
+            # user doesn't exists
             res = responsebuilder(threadid, "Error", ("User ID: " + userid + " does not exist."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return False
@@ -659,6 +669,10 @@ def main():
     global DEFAULT_N
     global DELAY_PRINT
     global MAX_CLIENTS
+    global CLIENT_FILE_STRUCT
+    CLIENT_FILE_STRUCT = {
+        "clients": []
+    }
     CLIENT_DATA_FILE = "clients/ids.json"
     GROUPS_PATH = "groups/"
     GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
@@ -669,13 +683,11 @@ def main():
     """
     Server data
     """
-    global offline_clients
-    global online_clients
     global id_list
     global groups
     mainlock = threading.Lock()
-    offline_clients = []
-    online_clients = []
+    global clients
+    clients = []
     id_list = []
     groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
 
@@ -697,8 +709,7 @@ def main():
     authors = loadauthors(os.path.join(__location__, AUTHOR_FILE))
     groups = loadgroups(mainlock)
     debugprint(str(groups) + "\n")
-    offline_clients = loadclients(mainlock)
-    debugprint(str(offline_clients) + "\n")
+    clients = loadclients(mainlock)
     server_socket = socket(AF_INET, SOCK_STREAM)
     server_socket.bind(("", PORT_NUMBER))
     server_socket.listen(MAX_CLIENTS)
