@@ -84,17 +84,20 @@ def main():
                             print ("User " + usr_nm + " succesfully logged in")
                         else:
                             logged = False
-                            usr_nm = ""
                             print ("Error, User " + usr_nm + " not logged in")
+                            usr_nm = ""
                 else:
                     print("Not logged in\n")
             else:
                 if usr_input[0] == INPUT_LOGOUT :
-                    message =  {
+                    message = {
                         "type":"logout"
                     }
+                    logged = False;
                     senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
-                    break
+                    rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                    print(str(rec))
+                    #break
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
     except IOError as err:

@@ -7,7 +7,7 @@ Python Discussion Application: Server
 from socket import *
 from termcolor import colored  # for setting output color source: https://pypi.python.org/pypi/termcolor
 from da_protocols import senddata, receivedata
-import threading, sys, os, time, json
+import threading, sys, os, time, json, random
 
 
 class ClientHandler(threading.Thread):
@@ -49,13 +49,18 @@ class ClientHandler(threading.Thread):
                     if not loggedin and msgType == REQUEST_LOGIN:
                         userid = message["userID"]
                         loggedin, current_client = loginclient(clientsocket, userid, offline_clients, online_clients, lock)
+                        print("logged in")
+                        print(str(current_client))
                     elif msgType == REQUEST_HELP:
                         res = helpmenu()
                         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
                     elif msgType == REQUEST_LOGOUT:
-                        loggedin = not logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
+                        loggedin = logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
+                        loggedin = False
+                        print("logged out")
+                        print(str(current_client))
+                        current_client = {}
                         delay(0.5)  # need delay to give the client time to receive transmission and close.
-                        self.stop()
                     elif msgType == REQUEST_QUIT:
                         if loggedin:
                             loggedin = not logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock)
@@ -191,37 +196,52 @@ def loadclients(lock):
     """
     Loads the clients on startup from client file
     """
+    global id_list
     # load clients
     typeprint("Populating client data....\n", COLOR_TASK_START)
     with lock:
         with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
             clientdata = json.loads(f.read())
             clients = clientdata["clients"]
+            id_list = []
+            for user in clients:
+                if user["id"] not in id_list:
+                    id_list.append(user["id"])
+                else:
+                    print("Users with multiple IDs exist " + str(user["id"]))
     typeprint(".......Client data populated!!!\n", COLOR_TASK_FINISH)
     return clients
 
-def createclient(clientID): 
+
+def createclient(clientID, lock):
     """
     Creates a default client and adds it to the list
     """
-
+    global id_list
     print("client_create")
+    new_id = -1
+    while True:
+        new_id = random.randint(0000, 9999)  # generate a new ID for the user
+        if new_id not in id_list:  # found a vacant ID
+            break
 
-    #Create the json addition
+    # Create the json addition
     addition = {}
-    addition.update({"id":"1234"})
-    addition.update({"name":clientID})
-    addition.update({"subscriptions":[]})
-        
+    addition.update({"id": new_id})
+    addition.update({"name": clientID})
+    addition.update({"subscriptions": []})
     print(addition)
 
+    id_list.append(new_id)
     with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
         clientdata = json.loads(f.read())
         clients = clientdata["clients"]
     clients.append(addition)
     with open(os.path.join(__location__, CLIENT_DATA_FILE), "w") as f:
         json.dump(clientdata, f)
+
     return addition
+
 
 def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
     """
@@ -242,9 +262,9 @@ def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
            
             print("login area")
             
-            data = createclient(userid)
-            #We will create the user pool
-            online_clients.append(clientdata)       
+            clientdata = createclient(userid, lock)
+            # We will create the user pool
+            online_clients.append(clientdata)
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " was created and logged in."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True, clientdata
@@ -254,7 +274,7 @@ def logoutclient(clientsocket, userid, offline_clients, online_clients, current_
     """
     Checks if the user is logged in and logs them out
     """
-    if current_client is None:
+    if current_client == {}:
         res = responsebuilder(threadid, "Error", "No users logged in")
         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         return False
@@ -651,10 +671,12 @@ def main():
     """
     global offline_clients
     global online_clients
+    global id_list
     global groups
     mainlock = threading.Lock()
     offline_clients = []
     online_clients = []
+    id_list = []
     groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
 
     """
