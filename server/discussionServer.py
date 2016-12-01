@@ -200,6 +200,28 @@ def loadclients(lock):
     typeprint(".......Client data populated!!!\n", COLOR_TASK_FINISH)
     return clients
 
+def createclient(clientID): 
+    """
+    Creates a default client and adds it to the list
+    """
+
+    print("client_create")
+
+    #Create the json addition
+    addition = {}
+    addition.update({"id":"1234"})
+    addition.update({"name":clientID})
+    addition.update({"subscriptions":[]})
+        
+    print(addition)
+
+    with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
+        clientdata = json.loads(f.read())
+        clients = clientdata["clients"]
+    clients.append(addition)
+    with open(os.path.join(__location__, CLIENT_DATA_FILE), "w") as f:
+        json.dump(clientdata, f)
+    return addition
 
 def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
     """
@@ -215,9 +237,17 @@ def loginclient(clientsocket, userid, offline_clients, online_clients, lock):
             return True, clientdata
         else:
             # user doesn't exists
-            res = responsebuilder(threadid, "Error", ("User ID: " + userid + " does not exist."))
+            #res = responsebuilder(threadid, "Error", ("User ID: " + userid + " does not exist."))
+            #senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+           
+            print("login area")
+            
+            data = createclient(userid)
+            #We will create the user pool
+            online_clients.append(clientdata)       
+            res = responsebuilder(threadid, "Success", ("User ID: " + userid + " was created and logged in."))
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-            return False, None
+            return True, clientdata
 
 
 def logoutclient(clientsocket, userid, offline_clients, online_clients, current_client, lock):
@@ -596,7 +626,7 @@ def main():
     global END_PACKET
     global DEFAULT_SEND_SIZE
     PACKET_LENGTH = 4096
-    PORT_NUMBER = 9390
+    PORT_NUMBER = 9399
     END_PACKET = "/*/!/$/*"
     DEFAULT_SEND_SIZE = PACKET_LENGTH - len(END_PACKET)
 

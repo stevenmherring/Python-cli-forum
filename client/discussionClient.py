@@ -26,7 +26,7 @@ def main():
     global DEFAULT_SEND_SIZE
     DEFAULT_SIZE    = 4096
     DEFAULT_IP      = "127.0.0.1"
-    DEFAULT_PORT    = 9390
+    DEFAULT_PORT    = 9399
     INPUT_LOGIN     = "login"
     INPUT_LOGOUT    = "logout"
     INPUT_HELP      = "help"
