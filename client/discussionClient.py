@@ -24,15 +24,27 @@ def main():
     global DEFAULT_SIZE
     global END_PACKET
     global DEFAULT_SEND_SIZE
+
+    MODE_ST         = 0
+    MODE_AG         = 1
+    MODE_SG         = 2
+    MODE_RG         = 3
+    CURRENT_MODE    = MODE_ST
+    CURRENT_READ    = {}
+
+
     DEFAULT_SIZE    = 4096
     DEFAULT_IP      = "127.0.0.1"
-    DEFAULT_PORT    = 9397
+    DEFAULT_PORT    = 9399
     INPUT_LOGIN     = "login"
     INPUT_LOGOUT    = "logout"
     INPUT_HELP      = "help"
     INPUT_QUIT      = "quit"
     INPUT_AG        = "ag"
     INPUT_Q         = "q"
+    INPUT_S         = "s"
+    INPUT_U         = "u"
+    INPUT_N         = "n"
     SUCCESS         = "success"
     ERROR           = "error"
     END_PACKET      = "/*/!/$/*"
@@ -54,6 +66,27 @@ def main():
             usr_input = input("> ").split(' ')
             sys.stdout.write(colored(("Input: " + str(usr_input[0]) + "\n"), 'red'))
             sys.stdout.flush()
+
+            if CURRENT_MODE != MODE_ST:
+                if CURRENT_MODE == MODE_AG:
+                    message = {"type":INPUT_AG, "userID":usr_nm}
+                    if usr_input[0] == INPUT_Q:
+                        message.update({"subcommand":INPUT_Q})
+                        CURRENT_MODE = MODE_ST
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                    elif usr_input[0] == INPUT_S or usr_input[0] == INPUT_U:
+                        message.update({"subcommand":INPUT_S})
+                        pattern = re.compile("\d+")
+                        select = []
+                        for x in range(1, (len(usr_input))):
+                            if pattern.match(usr_input[x]) and int(usr_input[x])-1 < len(CURRENT_READ):
+                                select.append(CURRENT_READ[int(usr_input[x])-1]["name"])
+                        message.update({"selections":select})
+                        print(str(message))
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                continue
+
+            print("HI")
             if usr_input[0] == INPUT_HELP:
                 message = {
                     "type":"help"
@@ -109,16 +142,14 @@ def main():
                         pattern = re.compile("\d+")
                         if pattern.match(usr_input[1]):
                             message.update({"N" : usr_input[1]})
-                            if len(usr_input) == 3:
-                                message.update({"subcommand" : usr_input[2]})
-                        else:
-                            message.update({"subcommand" : usr_input[1]})
                     senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
-                    print(rec["body"])
+                    print("All Groups Available")
                     counter = 1
-                    for a in rec["groups"]:
-                        print(counter + "      " + a["name"])
+                    CURRENT_READ = rec["groupList"]
+                    CURRENT_MODE = MODE_AG
+                    for a in rec["groupList"]:
+                        print(str(counter) + ". (" + " "+ ") " + a["name"])
                         counter = counter + 1
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
