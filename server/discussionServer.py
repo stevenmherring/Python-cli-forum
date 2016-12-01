@@ -711,6 +711,7 @@ def main():
     debugprint(str(groups) + "\n")
     clients = loadclients(mainlock)
     server_socket = socket(AF_INET, SOCK_STREAM)
+    server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     server_socket.bind(("", PORT_NUMBER))
     server_socket.listen(MAX_CLIENTS)
     beginlistening(server_socket, mainlock)
