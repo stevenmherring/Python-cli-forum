@@ -2,7 +2,7 @@ from socket import *
 from termcolor import colored
 from da_protocols import senddata, receivedata
 import sys, os, json, time
-
+import re
 
 def establishconnection(ipaddr, port):
     """
@@ -26,11 +26,12 @@ def main():
     global DEFAULT_SEND_SIZE
     DEFAULT_SIZE    = 4096
     DEFAULT_IP      = "127.0.0.1"
-    DEFAULT_PORT    = 9399
+    DEFAULT_PORT    = 9397
     INPUT_LOGIN     = "login"
     INPUT_LOGOUT    = "logout"
     INPUT_HELP      = "help"
     INPUT_QUIT      = "quit"
+    INPUT_AG        = "ag"
     INPUT_Q         = "q"
     SUCCESS         = "success"
     ERROR           = "error"
@@ -98,6 +99,27 @@ def main():
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                     print(str(rec))
                     #break
+                elif usr_input[0] == INPUT_AG:
+                    print(len(usr_input))
+                    message = {
+                        "type":"ag",
+                        "userID":usr_nm    
+                    }
+                    if len(usr_input) > 2:
+                        pattern = re.compile("\d+")
+                        if pattern.match(usr_input[1]):
+                            message.update({"N" : usr_input[1]})
+                            if len(usr_input) == 3:
+                                message.update({"subcommand" : usr_input[2]})
+                        else:
+                            message.update({"subcommand" : usr_input[1]})
+                    senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                    rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                    print(rec["body"])
+                    counter = 1
+                    for a in rec["groups"]:
+                        print(counter + "      " + a["name"])
+                        counter = counter + 1
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
     except IOError as err:
