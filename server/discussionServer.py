@@ -65,7 +65,7 @@ class ClientHandler(threading.Thread):
                         delay(0.5)  # need delay to give the client time to receive transmission and close.
                         self.stop()
                     elif loggedin:
-                        if message["N"] is None:
+                        if "N" not in message:
                             n = DEFAULT_N
                         else:
                             n = int(message["N"])
@@ -319,7 +319,7 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
         maxrange = messagecount + msgcount
     for i in range(messagecount, maxrange):
         with lock:
-            res["groupList"].add(groups[i])
+            res["groupList"].append(groups[i])
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -353,7 +353,7 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
                 maxrange = messagecount + msgcount
             for i in range(messagecount, maxrange):
                 with lock:
-                    res["groupList"].add(groups[i])
+                    res["groupList"].append(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             # exits AG moder
@@ -381,7 +381,7 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
         maxRange = messageCount + msgCount
     for i in range(messageCount, maxRange):
         with lock:
-            res["groupList"].add(groups[i])
+            res["groupList"].append(groups[i])
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -410,7 +410,7 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
                 else:
                     maxRange = messageCount + msgCount
                 for i in range(messageCount, maxRange):
-                    res["groupList"].add(groups[i])
+                    res["groupList"].append(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             # exits AG moder
