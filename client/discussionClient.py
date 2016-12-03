@@ -127,6 +127,8 @@ def main():
                         message.update({"selections":select})
                         print(str(message))
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print(str(rec["body"]))
                 continue
 
             print("HI")

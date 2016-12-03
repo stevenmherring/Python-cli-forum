@@ -336,10 +336,17 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
         if subcommand == SUB_S:
             # subscribe groups
             selections = message["selections"]
+            subs = []
             for s in selections:
                 if s not in current_client["subscriptions"]:
                     current_client["subscriptions"].append(s)
+                    subs.append(s)
             updateclients()
+            res = {
+                "type": "Success",
+                "body": ("Client " + str(current_client["id"]) + " subscribed to " + str(subs))
+            }
+            senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_U:
             # unsubscribed
             selections = message["selections"]
