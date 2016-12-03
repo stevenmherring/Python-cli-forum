@@ -4,6 +4,7 @@ from da_protocols import senddata, receivedata
 import sys, os, json, time
 import re
 
+
 def establishconnection(ipaddr, port):
     """
     Establish and return connection socket to server
@@ -67,6 +68,15 @@ def main():
             sys.stdout.write(colored(("Input: " + str(usr_input[0]) + "\n"), 'red'))
             sys.stdout.flush()
 
+            if usr_input[0] == INPUT_HELP:
+                message = {
+                    "type": "help"
+                }
+                senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                print (rec["body"])
+                continue
+
             if CURRENT_MODE != MODE_ST:
                 if CURRENT_MODE == MODE_AG:
                     message = {"type":INPUT_AG, "userID":usr_nm}
@@ -74,6 +84,39 @@ def main():
                         message.update({"subcommand":INPUT_Q})
                         CURRENT_MODE = MODE_ST
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print (rec["body"])
+                    elif usr_input[0] == INPUT_QUIT:
+                        # leave ag mode
+                        message.update({"subcommand": INPUT_Q})
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print (rec["body"])
+                        # and quit
+                        message = {
+                             "type": "quit"
+                            }
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        sys.stdout.write(colored("Goodbye!\n", 'cyan'))
+                        sys.stdout.flush()
+                        cl_socket.close()
+                        sys.exit(0)
+                    elif usr_input[0] == INPUT_LOGOUT:
+                        # leave ag mode
+                        CURRENT_MODE = MODE_ST
+                        message.update({"subcommand": INPUT_Q})
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print (rec["body"])
+                        # and logout
+                        message = {
+                            "type": "logout"
+                        }
+                        logged = False;
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print(str(rec))
+
                     elif usr_input[0] == INPUT_S or usr_input[0] == INPUT_U:
                         message.update({"subcommand":INPUT_S})
                         pattern = re.compile("\d+")
@@ -87,16 +130,9 @@ def main():
                 continue
 
             print("HI")
-            if usr_input[0] == INPUT_HELP:
+            if usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
                 message = {
-                    "type":"help"
-                }
-                senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
-                rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
-                print (rec["body"])
-            elif usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
-                message = {
-                    "type":"quit"
+                    "type": "quit"
                 }
                 senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                 sys.stdout.write(colored("Goodbye!\n", 'cyan'))
@@ -108,8 +144,8 @@ def main():
                     if len(usr_input) > 1:
                         usr_nm = usr_input[1]
                         message =  {
-                            "type":"login",
-                            "userID":usr_nm
+                            "type": "login",
+                            "userID": usr_nm
                         }
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                         rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)

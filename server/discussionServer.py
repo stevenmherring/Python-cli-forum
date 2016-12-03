@@ -58,6 +58,7 @@ class ClientHandler(threading.Thread):
                         print("logged out")
                         print(str(current_client))
                         current_client = {}
+                        updateclients()
                         delay(0.5)  # need delay to give the client time to receive transmission and close.
                     elif msgType == REQUEST_QUIT:
                         if loggedin:
@@ -71,7 +72,10 @@ class ClientHandler(threading.Thread):
                             n = int(message["N"])
                         if msgType == REQUEST_AG:
                             # available mode
-                            enter_ag_mode(clientsocket, current_client, n, groups, lock)
+                            flag = enter_ag_mode(clientsocket, current_client, n, groups, lock)
+                            if not flag:
+                                loggedin = False
+                                current_client = {}
                         elif msgType == REQUEST_SG:
                             # subscribe mode
                             enter_sg_mode(clientsocket, current_client, n, groups, lock)
@@ -335,6 +339,7 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
             for s in selections:
                 if s not in current_client["subscriptions"]:
                     current_client["subscriptions"].append(s)
+            updateclients()
         elif subcommand == SUB_U:
             # unsubscribed
             selections = message["selections"]
@@ -355,11 +360,19 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
                 with lock:
                     res["groupList"].append(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-        elif subcommand == SUB_Q:
+        elif subcommand == SUB_Q or subcommand == REQUEST_QUIT:
             # exits AG moder
             res = responsebuilder(threadid, "Success", "Exit AG Mode successfully.")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+            debugprint("left ag mode")
             return True
+        elif subcommand == REQUEST_LOGOUT:
+            logoutclient(clientsocket, current_client["id"], current_client, lock)
+            debugprint("logged out")
+            print(str(current_client))
+            current_client = {}
+            delay(0.5)  # need delay to give the client time to receive transmission and close.
+            return False
         else:
             # bad command
             res = responsebuilder(threadid, "Error", "Bad command. Please refer to help")
