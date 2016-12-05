@@ -78,9 +78,13 @@ def main():
                 continue
 
             if CURRENT_MODE != MODE_ST:
-                if CURRENT_MODE == MODE_AG:
-                    message = {"type":INPUT_AG, "userID":usr_nm}
-                    if usr_input[0] == INPUT_Q:
+                if CURRENT_MODE == MODE_AG or CURRENT_MODE == MODE_SG:
+                    if(CURRENT_MODE == MODE_AG:
+                        message = {"type":INPUT_AG, "userID":usr_nm}
+                    else:
+                        message = {"type":INPUT_SG, "userID":usr_nm}
+
+                     if usr_input[0] == INPUT_Q:
                         message.update({"subcommand":INPUT_Q})
                         CURRENT_MODE = MODE_ST
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
@@ -117,8 +121,11 @@ def main():
                         rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                         print(str(rec))
 
-                    elif usr_input[0] == INPUT_S or usr_input[0] == INPUT_U:
-                        message.update({"subcommand":INPUT_S})
+                    elif (CURRENT_MODE == MODE_AG and usr_input[0] == INPUT_S) or usr_input[0] == INPUT_U:
+                        if usr_input[0] == INPUT_U:
+                            message.update({"subcommand":INPUT_U})
+                        else:
+                            message.update({"subcommand":INPUT_S})
                         pattern = re.compile("\d+")
                         select = []
                         for x in range(1, (len(usr_input))):
@@ -131,7 +138,8 @@ def main():
                         print(str(rec["body"]))
                 continue
 
-            print("HI")
+
+
             if usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
                 message = {
                     "type": "quit"
@@ -188,6 +196,25 @@ def main():
                     CURRENT_MODE = MODE_AG
                     for a in rec["groupList"]:
                         print(str(counter) + ". (" + " "+ ") " + a["name"])
+                        counter = counter + 1
+                elif usr_inpput[0] == INPUT_SG:
+                    print(len(usr_input))
+                    message = {
+                        "type":"sg"
+                        "userID":usr_nm
+                    }
+                    if len(usr_input) > 2:
+                        pattern = re.compile("\d+")
+                        if pattern.match(usr_input[1]):
+                            message.update({"N" : usr_input[1]})
+                    senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                    rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                    print("All Groups Available")
+                    counter = 1
+                    CURRENT_READ = rec["groupList"]
+                    CURRENT_MODE = MODE_SG
+                    for a in rec["groupList"]:
+                        print("%d.%-10s    %s" %str(counter), 4, a["name"])
                         counter = counter + 1
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
