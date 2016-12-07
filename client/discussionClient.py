@@ -210,7 +210,7 @@ def main():
                             message.update({"N" : usr_input[1]})
                     senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
-                    print("All Groups Available")
+                    print("Subscribed Groups")
                     counter = 1
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_SG

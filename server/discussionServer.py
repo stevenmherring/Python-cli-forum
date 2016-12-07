@@ -350,8 +350,16 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
         elif subcommand == SUB_U:
             # unsubscribed
             selections = message["selections"]
+            subs = []
             for s in selections:
-                    current_client["subscriptions"].remove(s)
+                current_client["subscriptions"].remove(s)
+                subs.append(s)
+            updateclients()
+            res = {
+                "type": "Success",
+                "body": ("Client " + str(current_client["id"]) + " unsubscribed from " + str(subs))
+            }
+            senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_N:
             # lists next N groups
             msgcount = int(message["N"])
@@ -414,9 +422,17 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
         if subcommand == SUB_U:
             # unsubscribed
             selections = message["selections"]
+            subs = []
             for s in selections:
                 if s in current_client["subscriptions"]:
                     current_client["subscriptions"].remove(s)
+                    subs.append(s)
+            updateclients()
+            res = {
+                "type": "Success",
+                "body": ("Client " + str(current_client["id"]) + " unsubscribed from " + str(subs))
+                }
+            senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_N:
             # lists next N groups
             msgCount = int(message["N"])
@@ -542,6 +558,14 @@ def isgroupcurrent(currentgroup, groupname, groups, lock):
                     return True
                 else:
                     return False
+
+
+def get_time():
+    """
+    Returns a string format of the current time
+    """
+    ret = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+    return ret
 
 
 def loadcurrentgroup(groupName, groups, lock):
@@ -719,6 +743,7 @@ def main():
     debugMode = False
     COLOR_DEBUG = "red"
 
+    print(get_time())
     # preload group and client information
     for s in sys.argv:
         if s == '-d':
