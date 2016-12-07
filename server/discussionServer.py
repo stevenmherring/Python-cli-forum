@@ -344,7 +344,8 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
             updateclients()
             res = {
                 "type": "Success",
-                "body": ("Client " + str(current_client["id"]) + " subscribed to " + str(subs))
+                "body": ("Client " + str(current_client["id"]) + " subscribed to " + str(subs)),
+                "clientdata": current_client
             }
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_U:
@@ -357,7 +358,8 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
             updateclients()
             res = {
                 "type": "Success",
-                "body": ("Client " + str(current_client["id"]) + " unsubscribed from " + str(subs))
+                "body": ("Client " + str(current_client["id"]) + " unsubscribed from " + str(subs)),
+                "clientdata": current_client
             }
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_N:
@@ -430,7 +432,8 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
             updateclients()
             res = {
                 "type": "Success",
-                "body": ("Client " + str(current_client["id"]) + " unsubscribed from " + str(subs))
+                "body": ("Client " + str(current_client["id"]) + " unsubscribed from " + str(subs)),
+                "clientdata": current_client
                 }
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_N:
