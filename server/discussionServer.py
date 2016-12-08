@@ -184,14 +184,26 @@ def loadgroups(lock):
     """
     Loads the groups on startup
     """
-    # load groups
+    # load groups & groups content
     typeprint("Populating discussion groups....\n", COLOR_TASK_START)
     with lock:
         with open(os.path.join(__location__, GROUPS_DATA_FILE), "r") as f:
             groupsdata = json.loads(f.read())
             groups = groupsdata["groups"]
+        for g in groups:
+            try:
+                with open(os.path.join(__location__, GROUPS_PATH + g["path"])) as f:
+                    temp_content = json.loads(f.read())
+                    temp_group = {
+                        "name": g["name"],
+                        "content": temp_content
+                    }
+                    groupsContent.append(temp_group)
+            except IOError as err:
+                debugprint("no data file for " + g["name"] + "\n")
+                continue
     typeprint(".......Discussion groups populated!!!\n", COLOR_TASK_FINISH)
-    return groups
+    return groups, groupsContent
 
 
 def loadclients(lock):
@@ -315,15 +327,8 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
     messagecount = 0
     res = {
         "type": "Success",
-        "groupList": []
+        "groupList": groups
     }
-    if (messagecount + msgcount) > len(groups):
-        maxrange = len(groups)
-    else:
-        maxrange = messagecount + msgcount
-    for i in range(messagecount, maxrange):
-        with lock:
-            res["groupList"].append(groups[i])
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -364,18 +369,10 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_N:
             # lists next N groups
-            msgcount = int(message["N"])
             res = {
                 "type": "Success",
-                "groupList": []
+                "groupList": groups
             }
-            if (messagecount + msgcount) > len(groups):
-                maxrange = len(groups)
-            else:
-                maxrange = messagecount + msgcount
-            for i in range(messagecount, maxrange):
-                with lock:
-                    res["groupList"].append(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q or subcommand == REQUEST_QUIT:
             # exits AG moder
@@ -438,18 +435,10 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_N:
             # lists next N groups
-            msgCount = int(message["N"])
             res = {
                 "type": "Success",
-                "groupList": []
+                "groupList": groups
             }
-            with lock:
-                if (messageCount + msgCount) > len(groups):
-                    maxRange = len(groups)
-                else:
-                    maxRange = messageCount + msgCount
-                for i in range(messageCount, maxRange):
-                    res["groupList"].append(groups[i])
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_Q:
             # exits AG moder
@@ -489,12 +478,14 @@ def enter_rg_mode(clientsocket, current_client, msgCount, groupName, groups, loc
         elif subcommand == SUB_N:
             # lists next N posts in groupName
             # TODO this needs to confirm there arent new posts with the server...if no new posts, client handles it...if new posts, resend the post lists
-            if not isgroupcurrent(current_group, groupName, groups, lock):
-                current_group = loadcurrentgroup(groupName, groups, lock)
+            client_mod_time = message["last_modification_time"]
+            if not isgroupcurrent(client_mod_time, groupName, lock):
+                current_group = loadcurrentgroup(groupName, lock)
                 res = {
                     "type": "Error",
                     "body": "Updated Data",
-                    "thread": current_group
+                    "group": current_group,
+                    "groupList": groups
                 }
                 senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             else:
@@ -549,13 +540,13 @@ def createpost(current_client, groupname, groups, lock, postData):
                 subjects = json.loads(f.read())
 
 
-def isgroupcurrent(currentgroup, groupname, groups, lock):
+def isgroupcurrent(client_time, groupname, lock):
     """
     Checks if currentGroup data is up to date with groupName
     """
-    cg_time = currentgroup["last_modified"]
+    cg_time = client_time
     with lock:
-        for d in groups:
+        for d in groupsContent:
             if d["name"] == groupname:
                 if cg_time == d["last_modified"]:
                     return True
@@ -571,13 +562,13 @@ def get_time():
     return ret
 
 
-def loadcurrentgroup(groupName, groups, lock):
+def loadcurrentgroup(groupName, lock):
     """
     Returns specific group data
     """
     ret = {}
     with lock:
-        for d in groups:
+        for d in groupsContent:
             if d["name"] == groupName:
                 ret = d
     return ret
@@ -732,6 +723,8 @@ def main():
     """
     global id_list
     global groups
+    global groupsContent
+    groupsContent = []
     mainlock = threading.Lock()
     global clients
     clients = []
@@ -755,7 +748,7 @@ def main():
     typeprint("Launching Discussion Server...\n", 'yellow')
     __location__ = initlocation()
     authors = loadauthors(os.path.join(__location__, AUTHOR_FILE))
-    groups = loadgroups(mainlock)
+    groups, groupsContent = loadgroups(mainlock)
     debugprint(str(groups) + "\n")
     clients = loadclients(mainlock)
     server_socket = socket(AF_INET, SOCK_STREAM)
