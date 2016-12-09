@@ -5,6 +5,25 @@ import sys, os, json, time
 import re
 
 
+def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE):
+    if(CURRENT_MODE == MODE_AG):
+        frmt = "%d. (%s)   %s"
+    else:
+        frmt = "%d%-5s%s    %s"
+    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
+        if ( i < len(CURRENT_READ) ):
+            if(CURRENT_MODE == MODE_AG):
+                if(CURRENT_READ[i]["name"] in client_data["subscriptions"]):
+                    sub = "s"
+                else:
+                    sub = " "
+                print(frmt % (i+1, sub , CURRENT_READ[i]["name"]))
+            else:
+                print(frmt % (i+1, str(4), CURRENT_READ[i]["name"]))
+    return
+
+
+
 def establishconnection(ipaddr, port):
     """
     Establish and return connection socket to server
@@ -29,6 +48,12 @@ def main():
     N_VALUE         = 5
     N_TICK          = -1
     N_DEFAULT       = 5
+
+
+    global MODE_ST
+    global MODE_AG
+    global MODE_SG
+    global MODE_RG
 
     MODE_ST         = 0
     MODE_AG         = 1
@@ -139,7 +164,15 @@ def main():
                         for x in range(1, (len(usr_input))):
                             index = int(usr_input[x])-1
                             if pattern.match(usr_input[x]) and index < (N_VALUE*(N_TICK)) and index >= (N_VALUE*(N_TICK-1)):
-                                select.append(CURRENT_READ[int(usr_input[x])-1]["name"])
+                                occur = False
+                                if( usr_input[0] == INPUT_S and CURRENT_READ[int(usr_input[x])-1]["name"] not in client_data["subscriptions"]):
+                                    client_data["subscriptions"].append(CURRENT_READ[int(usr_input[x])-1]["name"])
+                                    occur = True
+                                elif (usr_input[0] == INPUT_U and CURRENT_READ[int(usr_input[x])-1]["name"] in client_data["subscriptions"]):
+                                    client_data["subscriptions"].remove(CURRENT_READ[int(usr_input[x])-1]["name"])
+                                    occur = True
+                                if(occur):
+                                    select.append(CURRENT_READ[int(usr_input[x])-1]["name"])
                         if(len(select) == 0):
                             print("Invalid Selection")
                         else:
@@ -148,6 +181,8 @@ def main():
                             senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                             rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                             print(str(rec["body"]))
+                            printformat(N_VALUE, N_TICK-1, CURRENT_READ, CURRENT_MODE)
+
                     elif (usr_input[0] == INPUT_N):
                         if(N_TICK * N_VALUE >= len(CURRENT_READ)):
                             message.update({"subcommand":INPUT_Q})
@@ -156,13 +191,7 @@ def main():
                             rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                             print (rec["body"])
                         else:
-                            if(CURRENT_MODE == MODE_AG):
-                                frmt = "%d. (%s)   %s"
-                            else:
-                                frmt = "%d%-5s%s    %s"
-                            for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
-                                if ( i < len(CURRENT_READ) ):
-                                    print(frmt % (i+1, " ", CURRENT_READ[i]["name"]))
+                            printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
                             N_TICK = N_TICK + 1
                 continue
 
@@ -231,9 +260,8 @@ def main():
                     counter = 1
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_AG
-                    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
-                        if ( i < len(CURRENT_READ) ):
-                            print("%d. (%s)   %s" % (i+1, " ", CURRENT_READ[i]["name"]))
+                    
+                    printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
                     N_TICK = N_TICK + 1
                 elif usr_input[0] == INPUT_SG:
                     print(len(usr_input))
@@ -256,9 +284,8 @@ def main():
                     print("Subscribed Groups")
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_SG
-                    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
-                        if ( i < len(CURRENT_READ) ):
-                            print("%d%-5s%s    %s" % (i+1,".", str(4), CURRENT_READ[i]["name"]))
+            
+                    printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
                     N_TICK = N_TICK + 1
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
