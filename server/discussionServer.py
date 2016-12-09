@@ -451,12 +451,12 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def enter_rg_mode(clientsocket, current_client, msgCount, groupName, groups, lock):
+def enter_rg_mode(clientsocket, current_client, groupName, groups, lock):
     """
     Read Group Mode, Allows user to use special commands [id], r, n, p, q
     """
     userid = current_client["id"]
-    current_group = loadcurrentgroup(groupName, groups, lock)
+    current_group = loadcurrentgroup(groupName, groups)
     # build initial posting response ie. posts 1-msgCount
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -538,6 +538,21 @@ def createpost(current_client, groupname, groups, lock, postData):
         if d["name"] == groupname:
             with open(os.path.join(__location__, d["path"]), "rw") as f:
                 subjects = json.loads(f.read())
+
+
+def update_groups_data(current_group):
+    """
+    Updates current group data structures
+    """
+    global group_data_dirty
+    group_data_dirty = True
+    temp_group = {}
+    current_group["last_modified"] = get_time()
+    for g in groups:
+        if g["name"] == current_group["name"]:
+            temp_group = g
+    with open(os.path.join(__location__, GROUPS_PATH + temp_group["path"]), "w") as f:
+        json.dump(current_group, f)
 
 
 def isgroupcurrent(client_time, groupname, lock):
@@ -711,6 +726,12 @@ def main():
     CLIENT_FILE_STRUCT = {
         "clients": []
     }
+    global GROUP_FILE_STRUCT
+    GROUP_FILE_STRUCT = {
+        "total_posts": 0,
+        "last_modified": "",
+        "subjects": []
+    }
     CLIENT_DATA_FILE = "clients/ids.json"
     GROUPS_PATH = "groups/"
     GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
@@ -730,6 +751,14 @@ def main():
     clients = []
     id_list = []
     groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
+
+    """
+    Dirty Flags
+    """
+    global group_data_dirty
+    global client_data_dirty
+    group_data_dirty = False
+    group_client_dirty = False #TODO: track data changes in the code, to switch flag True, before data use check and fetch data.
 
     """
     Debug Stuff
