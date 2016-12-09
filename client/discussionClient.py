@@ -26,6 +26,10 @@ def main():
     global END_PACKET
     global DEFAULT_SEND_SIZE
 
+    N_VALUE         = 5
+    N_TICK          = -1
+    N_DEFAULT       = 5
+
     MODE_ST         = 0
     MODE_AG         = 1
     MODE_SG         = 2
@@ -130,13 +134,33 @@ def main():
                         pattern = re.compile("\d+")
                         select = []
                         for x in range(1, (len(usr_input))):
-                            if pattern.match(usr_input[x]) and int(usr_input[x])-1 < len(CURRENT_READ):
+                            index = int(usr_input[x])-1
+                            if pattern.match(usr_input[x]) and index < (N_VALUE*(N_TICK)) and index >= (N_VALUE*(N_TICK-1)):
                                 select.append(CURRENT_READ[int(usr_input[x])-1]["name"])
-                        message.update({"selections":select})
-                        print(str(message))
-                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
-                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
-                        print(str(rec["body"]))
+                        if(len(select) == 0):
+                            print("Invalid Selection")
+                        else:
+                            message.update({"selections":select})
+                            print(str(message))
+                            senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                            rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                            print(str(rec["body"]))
+                    elif (usr_input[0] == INPUT_N):
+                        if(N_TICK * N_VALUE >= len(CURRENT_READ)):
+                            message.update({"subcommand":INPUT_Q})
+                            senddata(cl_socket,message,DEFAULT_SIZE,END_PACKET)
+                            CURRENT_MODE = MODE_ST
+                            rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                            print (rec["body"])
+                        else:
+                            if(CURRENT_MODE == MODE_AG):
+                                frmt = "%d. (%s)   %s"
+                            else:
+                                frmt = "%d%-5s%s    %s"
+                            for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
+                                if ( i < len(CURRENT_READ) ):
+                                    print(frmt % (i+1, " ", CURRENT_READ[i]["name"]))
+                            N_TICK = N_TICK + 1
                 continue
 
 
@@ -185,38 +209,51 @@ def main():
                         "type":"ag",
                         "userID":usr_nm    
                     }
-                    if len(usr_input) > 2:
+                    if len(usr_input) > 1:
                         pattern = re.compile("\d+")
                         if pattern.match(usr_input[1]):
                             message.update({"N" : usr_input[1]})
+                            N_VALUE = int(usr_input[1])
+                        else:
+                            N_VALUE = N_DEFAULT
+                    else:
+                        N_VALUE = N_DEFAULT
+                    N_TICK = 0
                     senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                     print("All Groups Available")
                     counter = 1
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_AG
-                    for a in rec["groupList"]:
-                        print(str(counter) + ". (" + " "+ ") " + a["name"])
-                        counter = counter + 1
+                    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
+                        if ( i < len(CURRENT_READ) ):
+                            print("%d. (%s)   %s" % (i+1, " ", CURRENT_READ[i]["name"]))
+                    N_TICK = N_TICK + 1
                 elif usr_input[0] == INPUT_SG:
                     print(len(usr_input))
                     message = {
                         "type":"sg",
                         "userID":usr_nm
                     }
-                    if len(usr_input) > 2:
+                    if len(usr_input) > 1:
                         pattern = re.compile("\d+")
                         if pattern.match(usr_input[1]):
                             message.update({"N" : usr_input[1]})
+                            N_VALUE = int(usr_input[1])
+                        else
+                            N_VALUE = N_DEFAULT
+                    else:
+                        N_VALUE = N_DEFAULT
+                    N_TICK = 0
                     senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                     print("Subscribed Groups")
-                    counter = 1
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_SG
-                    for a in rec["groupList"]:
-                        print("%d%-5s%s    %s" % (counter,".", str(4), a["name"]))
-                        counter = counter + 1
+                    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
+                        if ( i < len(CURRENT_READ) ):
+                            print("%d%-5s%s    %s" % (i+1,".", str(4), CURRENT_READ[i]["name"]))
+                    N_TICK = N_TICK + 1
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
     except IOError as err:
