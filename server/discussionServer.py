@@ -47,6 +47,7 @@ class ClientHandler(threading.Thread):
                     if not loggedin and msgType == REQUEST_LOGIN:
                         userid = message["userID"]
                         loggedin, current_client = loginclient(clientsocket, userid, lock)
+                        senddata(clientsocket, current_client, PACKET_LENGTH, END_PACKET)
                         print("logged in")
                         print(str(current_client))
                     elif msgType == REQUEST_HELP:

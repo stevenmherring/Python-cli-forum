@@ -55,6 +55,9 @@ def main():
     ERROR           = "error"
     END_PACKET      = "/*/!/$/*"
 
+    global client_data
+    client_data     = {}
+
     # DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
 
     logged = False
@@ -187,6 +190,9 @@ def main():
                         if rec["type"].lower() == SUCCESS:
                             logged = True
                             print ("User " + usr_nm + " succesfully logged in")
+                            client_data = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                            print(str(client_data))
+
                         else:
                             logged = False
                             print ("Error, User " + usr_nm + " not logged in")
