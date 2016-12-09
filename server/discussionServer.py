@@ -291,7 +291,7 @@ def loginclient(clientsocket, userid, lock):
             # We will create the user pool
             clientdata["logged_flag"] = 1
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " was created and logged in."))
-            res.update({"client", clientdata})
+            res.update({"client": clientdata})
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True, clientdata
 
@@ -453,7 +453,7 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def enter_rg_mode(clientsocket, current_client, groupName, groups, lock):
+def enter_rg_mode(clientsocket, current_client, groupName, lock):
     """
     Read Group Mode, Allows user to use special commands [id], r, n, p, q
     """
@@ -476,7 +476,7 @@ def enter_rg_mode(clientsocket, current_client, groupName, groups, lock):
             # mark post read
             postSubject = message["postSubject"]
             postNum = message["postNumber"]
-            markpost(clientsocket, userid, groupName, postSubject, postNum, lock, "r")
+            markpostread(clientsocket, userid, current_group, postSubject, postNum, lock)
         elif subcommand == SUB_N:
             # lists next N posts in groupName
             # TODO this needs to confirm there arent new posts with the server...if no new posts, client handles it...if new posts, resend the post lists
@@ -508,39 +508,55 @@ def enter_rg_mode(clientsocket, current_client, groupName, groups, lock):
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def markpost(clientsocket, userid, groupname, postSubject, postNumber, lock, mark):
+def markpostread(clientsocket, userid, current_group, postSubject, postNumber, lock):
     """
     Marks a post as Read, Unread etc...based on 'r', 'u'
     Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
+    post_thread = None
     with lock:
-        for d in groups:
-            if d["name"] == groupname:
-                with open(os.path.join(__location__, d["path"]), "rw") as f:
-                    subjects = json.loads(f.read())
-                    for s in subjects:
-                        if s["name"] == postSubject:
-                            p = s["thread"][postNumber]
-                            if p["postNumber"] == postNumber:
-                                p["usersViewed"].append(userid)
-                                res = responsebuilder(threadid, "Success", "Post marked")
-                                senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-                            else:
-                                # error, postNumbers not aligned
-                                res = responsebuilder("Error", "Post Numbers Not Aligned")
-                                senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+        for s in current_group["subjects"]:
+            if s["name"] == postSubject:
+                post_thread = s
+                break
+        if post_thread is not None:
+            if userid not in post_thread[postNumber]["usersViewed"]:
+                post_thread[postNumber]["usersViewed"].append(userid)
+                update_groups_data(current_group)
+                res = responsebuilder(threadid, "Success", "Post marked")
+                senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+            else:
+                # error, postNumbers not aligned
+                res = responsebuilder("Error", "Post not found")
+                senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
-def createpost(current_client, groupname, groups, lock, postData):
+def createpost(clientsocket, current_client, current_group, postData, lock):
     """
     Creates a post from user
     """
     #TODO
-    for d in groups:
-        if d["name"] == groupname:
-            with open(os.path.join(__location__, d["path"]), "rw") as f:
-                subjects = json.loads(f.read())
-
+    post_thread = None
+    with lock:
+        for s in current_group["subjects"]:
+            if s["name"] == postData["subject"]:
+                post_thread = s
+                break
+        if post_thread is not None:
+            new_post = {}
+            new_post.update({"postNumber": post_thread["postCount"]})
+            new_post.update({"usersViewed": [current_client["id"]]})
+            post_thread["postCount"] += 1
+            for key, value in postData.items():
+                new_post.update({key: value})
+            post_thread["thread"].add(new_post)
+            update_groups_data(current_group)
+            res = responsebuilder(threadid, "Success", "Post created")
+            senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+        else:
+            #TODO: Add post creation for a new subject here
+            res = responsebuilder(threadid, "Error", "Post could not be created, subject does not exist")
+            senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 def update_groups_data(current_group):
     """
