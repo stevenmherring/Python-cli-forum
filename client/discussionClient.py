@@ -190,7 +190,7 @@ def main():
                         if rec["type"].lower() == SUCCESS:
                             logged = True
                             print ("User " + usr_nm + " succesfully logged in")
-                            client_data = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                            client_data = rec["client"]
                             print(str(client_data))
 
                         else:
@@ -246,7 +246,7 @@ def main():
                         if pattern.match(usr_input[1]):
                             message.update({"N" : usr_input[1]})
                             N_VALUE = int(usr_input[1])
-                        else
+                        else:
                             N_VALUE = N_DEFAULT
                     else:
                         N_VALUE = N_DEFAULT

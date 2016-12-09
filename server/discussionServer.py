@@ -47,7 +47,6 @@ class ClientHandler(threading.Thread):
                     if not loggedin and msgType == REQUEST_LOGIN:
                         userid = message["userID"]
                         loggedin, current_client = loginclient(clientsocket, userid, lock)
-                        senddata(clientsocket, current_client, PACKET_LENGTH, END_PACKET)
                         print("logged in")
                         print(str(current_client))
                     elif msgType == REQUEST_HELP:
@@ -278,6 +277,7 @@ def loginclient(clientsocket, userid, lock):
             # online_clients.append(clientdata)
             # offline_clients[:] = [client for client in offline_clients if client.get("id") != userid]
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " logged in successfully."))
+            res.update({"client": clientdata})
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True, clientdata
         else:
@@ -291,6 +291,7 @@ def loginclient(clientsocket, userid, lock):
             # We will create the user pool
             clientdata["logged_flag"] = 1
             res = responsebuilder(threadid, "Success", ("User ID: " + userid + " was created and logged in."))
+            res.update({"client", clientdata})
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             return True, clientdata
 
