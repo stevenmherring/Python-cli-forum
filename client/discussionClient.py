@@ -19,7 +19,7 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE):
                     sub = " "
                 print(frmt % (i+1, sub , CURRENT_READ[i]["name"]))
             else:
-                print(frmt % (i+1, str(4), CURRENT_READ[i]["name"]))
+                print(frmt % (i+1,".", str(4), CURRENT_READ[i]["name"]))
     return
 
 
