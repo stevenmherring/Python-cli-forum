@@ -81,7 +81,8 @@ class ClientHandler(threading.Thread):
                             enter_sg_mode(clientsocket, current_client, n, groups, lock)
                         elif msgType == REQUEST_RG:
                             # read mode
-                            enter_rg_mode(clientsocket, current_client, n, groupName, groups, lock)
+                            groupName = req["groupList"]
+                            enter_rg_mode(clientsocket, current_client, groupName, lock)
                         else:
                             sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n")
                                                      , COLOR_ERROR))
@@ -454,9 +455,15 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
     """
     Read Group Mode, Allows user to use special commands [id], r, n, p, q
     """
+    print(groupName)
+
     userid = current_client["id"]
     current_group = loadcurrentgroup(groupName, lock)
     # build initial posting response ie. posts 1-msgCount
+
+    res = { "type": "Success", "groupData": current_group } 
+    senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
+
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
         msgType = message["type"].lower()

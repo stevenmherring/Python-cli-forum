@@ -103,6 +103,7 @@ def main():
     INPUT_QUIT      = "quit"
     INPUT_AG        = "ag"
     INPUT_SG        = "sg"
+    INPUT_RG        = "rg"
     INPUT_Q         = "q"
     INPUT_S         = "s"
     INPUT_U         = "u"
@@ -325,6 +326,27 @@ def main():
                     CURRENT_MODE = MODE_SG
                     printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_nm)
                     N_TICK = N_TICK + 1
+                elif usr_input[0] == INPUT_RG:
+                    message = {
+                        "type":"rg",
+                        "userID":usr_nm,
+                        "groupList":usr_input[1]
+                    }
+                    print(message)
+                    if len(usr_input) > 2:
+                        pattern = re.compile("\d+")
+                        if pattern.match(usr_input[2]):
+                            message.update({"N" : usr_input[2]})
+                            N_VALUE = int(usr_input[3])
+                        else:
+                            N_VALUE = N_DEFAULT
+                    else:
+                        N_VALUE = N_DEFAULT
+                    N_TICK = 0
+                    senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                    rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                    print(rec)
+       
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
     except IOError as err:
