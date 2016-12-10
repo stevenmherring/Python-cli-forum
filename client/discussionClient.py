@@ -26,6 +26,12 @@ def updatevalue (usr_id):
         json.dump(group_data, f)
     return
 
+def printread  (N_VALUE, N_TICK, CURRENT_READ, usr_id):
+    read = CURRENT_READ["content"]["subjects"]
+    for i in range(0, len(read)):
+        print("%d.%s %s  %s" % (i+1, "N", read[i]["thread"][int(read[i]["postCount"])-1]["date"], read[i]["name"]))
+
+
 def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
     if(CURRENT_MODE == MODE_AG):
         frmt = "%d. (%s)   %s"
@@ -345,8 +351,11 @@ def main():
                     N_TICK = 0
                     senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
-                    print(rec)
-       
+                    
+                    CURRENT_READ = rec["groupData"]
+                    CURRENT_MODE = MODE_RG
+                    printread(N_VALUE, N_TICK, CURRENT_READ, usr_nm)
+                    N_TICK = N_TICK + 1      
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
     except IOError as err:
