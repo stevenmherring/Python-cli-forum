@@ -401,16 +401,13 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
     """
     messageCount = 0
     res = {
-        "type": "Success",
-        "groupList": []
+        "type": "Success"
     }
-    if (messageCount + msgCount) > len(groups):
-        maxRange = len(groups)
-    else:
-        maxRange = messageCount + msgCount
-    for i in range(messageCount, maxRange):
-        with lock:
-            res["groupList"].append(groups[i])
+    temp_list = []
+    for g in groups:
+        if g["name"] in current_client["subscriptions"]:
+            temp_list.append(g)
+    res.update({"groupList": temp_list})
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
