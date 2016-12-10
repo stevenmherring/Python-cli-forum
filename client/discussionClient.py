@@ -284,7 +284,7 @@ def main():
                     print("Subscribed Groups")
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_SG
-            
+                    print(str(CURRENT_READ))
                     printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
                     N_TICK = N_TICK + 1
         cl_socket.close()

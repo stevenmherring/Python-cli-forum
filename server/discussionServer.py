@@ -406,7 +406,7 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
     temp_list = []
     for g in groups:
         if g["name"] in current_client["subscriptions"]:
-            temp_list.append(g)
+            temp_list.append(loadcurrentgroup(g["name"], lock))
     res.update({"groupList": temp_list})
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
@@ -455,7 +455,7 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
     Read Group Mode, Allows user to use special commands [id], r, n, p, q
     """
     userid = current_client["id"]
-    current_group = loadcurrentgroup(groupName, groups)
+    current_group = loadcurrentgroup(groupName, lock)
     # build initial posting response ie. posts 1-msgCount
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
