@@ -5,7 +5,28 @@ import sys, os, json, time
 import re
 
 
-def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE):
+def loadvalue   (usr_id):
+    tmp = False
+    with open("data.txt", "r") as file_read:
+        val = json.loads(file_read.read())
+        for a in val :
+            if( a["usr"] == usr_id):
+                tmp = True
+                break
+    if(tmp is False):
+        val.update({"usr":usr_id, "data":[]})
+    return val
+
+def updatevalue (usr_id):
+    with open("data.txt", "w") as f:
+        val = loadvalue(usr_id)
+        for i in val:
+             if(i["name"] == usr_id):
+                i.update({"data":group_data})
+        json.dump(group_data, f)
+    return
+
+def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
     if(CURRENT_MODE == MODE_AG):
         frmt = "%d. (%s)   %s"
     else:
@@ -19,7 +40,17 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE):
                     sub = " "
                 print(frmt % (i+1, sub , CURRENT_READ[i]["name"]))
             else:
-                print(frmt % (i+1,".", str(4), CURRENT_READ[i]["name"]))
+                cur = None
+                tmp = loadvalue(usr_id)
+                for g in tmp["data"]:
+                    if (g["name"] == CURRENT_READ[i]["name"]):
+                        cur = g
+                        break
+                if(cur is None):
+                    tot = CURRENT_READ[i]["content"]["total_posts"]
+                else:
+                    tot = CURRENT_READ[i]["total_posts"] - g["total_posts"]
+                print(frmt % (i+1,".", str(tot), CURRENT_READ[i]["name"]))
     return
 
 
@@ -83,9 +114,18 @@ def main():
     global client_data
     client_data     = {}
 
+    global group_data
+    group_data      = {}
+
+
+    with open("data.txt", "a+") as f:
+        print("Cache Loaded")
+
+
     # DEFAULT_SEND_SIZE = DEFAULT_SIZE - len(END_PACKET)
 
     logged = False
+    global usr_nm
     usr_nm = ''
 
     # fetch arguments
@@ -180,8 +220,7 @@ def main():
                             print(str(message))
                             senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                             rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
-                            print(str(rec["body"]))
-                            printformat(N_VALUE, N_TICK-1, CURRENT_READ, CURRENT_MODE)
+                            printformat(N_VALUE, N_TICK-1, CURRENT_READ, CURRENT_MODE, usr_nm)
 
                     elif (usr_input[0] == INPUT_N):
                         if(N_TICK * N_VALUE >= len(CURRENT_READ)):
@@ -191,7 +230,7 @@ def main():
                             rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                             print (rec["body"])
                         else:
-                            printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
+                            printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_nm)
                             N_TICK = N_TICK + 1
                 continue
 
@@ -261,7 +300,7 @@ def main():
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_AG
                     
-                    printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
+                    printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_nm)
                     N_TICK = N_TICK + 1
                 elif usr_input[0] == INPUT_SG:
                     print(len(usr_input))
@@ -284,8 +323,7 @@ def main():
                     print("Subscribed Groups")
                     CURRENT_READ = rec["groupList"]
                     CURRENT_MODE = MODE_SG
-                    print(str(CURRENT_READ))
-                    printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE)
+                    printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_nm)
                     N_TICK = N_TICK + 1
         cl_socket.close()
         print ("User " + usr_nm + " succesfully logged out")
