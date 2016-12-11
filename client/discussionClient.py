@@ -1,35 +1,79 @@
 from socket import *
 from termcolor import colored
 from da_protocols import senddata, receivedata
-import sys, os, json, time
+import sys, os, json, time, operator
 import re
 
 
 def loadvalue   (usr_id):
     tmp = False
     with open("data.txt", "r") as file_read:
-        val = json.loads(file_read.read())
+        load = json.loads(file_read.read())
+        val = load["client"]
         for a in val :
             if( a["usr"] == usr_id):
                 tmp = True
                 break
     if(tmp is False):
-        val.update({"usr":usr_id, "data":[]})
-    return val
+        val.append({"usr":usr_id, "data":{}})    
+    
+    return load
 
-def updatevalue (usr_id):
+def updatevalue (usr_id, group, subject):
+    val = loadvalue(usr_id)
     with open("data.txt", "w") as f:
-        val = loadvalue(usr_id)
-        for i in val:
-             if(i["name"] == usr_id):
-                i.update({"data":group_data})
-        json.dump(group_data, f)
+        #Start by iterating over all instances in val for the correct username
+        for i in val["client"]:
+            if(i["usr"] == usr_id):
+                #print (group)
+                if(group["name"] not in i["data"]):
+                    i["data"].update(
+                        {group["name"]:{"total_posts":group["content"]["total_posts"], "subs":{}}}
+                    )
+                i["data"][group["name"]]["total_posts"] = group["content"]["total_posts"]
+                i["data"][group["name"]]["subs"].update({subject["name"]:subject["postCount"]})
+        json.dump(val, f)
     return
 
-def printread  (N_VALUE, N_TICK, CURRENT_READ, usr_id):
+
+def check_new (group, current_subject, usr_id):
+    group_name = group["name"]
+    val = loadvalue(usr_id)
+    found = False
+    for i in val["client"]:
+        if(i["usr"] == usr_id):
+            print(i)
+            if("subs" in i["data"][group_name]):
+                print(current_subject["name"])
+                if(current_subject["name"] in i["data"][group_name]["subs"]):
+                    if(i["data"][group_name]["subs"][current_subject["name"]] == current_subject["postCount"]):
+                        return False
+            else:
+                updatevalue(usr_id, group, current_subject)
+    return True        
+                            
+
+def printread (N_VALUE, N_TICK, CURRENT_READ, usr_id):
     read = CURRENT_READ["content"]["subjects"]
-    for i in range(0, len(read)):
-        print("%d.%s %s  %s" % (i+1, "N", read[i]["thread"][int(read[i]["postCount"])-1]["date"], read[i]["name"]))
+    data = []
+    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
+        if(i < len(read)):
+            if(check_new(CURRENT_READ, read[i], usr_id) == True):
+                new = "N"
+            else:
+                new = " "
+            data.append({
+                "num" : i+1, 
+                "date" : read[i]["thread"][int(read[i]["postCount"])-1]["date"],
+                "name" : read[i]["name"],
+                "new"  : new,
+                "sub"  : read[i]
+            })
+    group = sorted(data, key=operator.itemgetter('new'), reverse = True)
+    del sort_group[:]
+    for k in group:
+        print("%d. %s  %s  %s" % (k["num"], k["new"], k["date"], k["name"]))
+        sort_group.append(k)
 
 
 def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
@@ -48,14 +92,13 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
             else:
                 cur = None
                 tmp = loadvalue(usr_id)
-                for g in tmp["data"]:
-                    if (g["name"] == CURRENT_READ[i]["name"]):
+                for g in tmp["client"]:
+                    if(g["usr"] == usr_id):
                         cur = g
-                        break
-                if(cur is None):
+                if("total_posts" not in cur["data"]):
                     tot = CURRENT_READ[i]["content"]["total_posts"]
                 else:
-                    tot = CURRENT_READ[i]["total_posts"] - g["total_posts"]
+                    tot = CURRENT_READ[i]["total_posts"] - g["data"]["total_posts"]
                 print(frmt % (i+1,".", str(tot), CURRENT_READ[i]["name"]))
     return
 
@@ -96,6 +139,7 @@ def main():
     MODE_AG         = 1
     MODE_SG         = 2
     MODE_RG         = 3
+    MODE_RG_R       = 4
     CURRENT_MODE    = MODE_ST
     CURRENT_READ    = {}
 
@@ -114,6 +158,7 @@ def main():
     INPUT_S         = "s"
     INPUT_U         = "u"
     INPUT_N         = "n"
+    INPUT_R         = "r"
     SUCCESS         = "success"
     ERROR           = "error"
     END_PACKET      = "/*/!/$/*"
@@ -124,6 +169,9 @@ def main():
     global group_data
     group_data      = {}
 
+    global sort_group
+    sort_group      = []
+    
 
     with open("data.txt", "a+") as f:
         print("Cache Loaded")
@@ -158,7 +206,36 @@ def main():
                 continue
 
             if CURRENT_MODE != MODE_ST:
-                if CURRENT_MODE == MODE_AG or CURRENT_MODE == MODE_SG:
+                if CURRENT_MODE == MODE_RG:
+                    message = {"type":INPUT_RG, "userID":usr_nm}
+                    if usr_input[0] == INPUT_Q:
+                        message.update({"subcommand":INPUT_Q})
+                        CURRENT_MODE = MODE_ST
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print (rec["body"])
+                    elif usr_input[0] == INPUT_R:
+                        message.update({"subcommand":INPUT_R})
+                        pattern_1 = re.compile("\d+")
+                        pattern_2 = re.compile("\d+-\d+")
+                        
+                        print(sort_group)
+
+                        if(pattern_1.match(usr_input[1])):
+                            locate = int(usr_input[1])
+                            message.update({"postSubject":sort_group[locate-1]["sub"]["name"]})
+  
+                        elif(pattern_2.match(usr_input[1])):
+                            split = usr_input[1].split("-")
+                            for locate in range(int(split[0]), int(split[1])+1):
+                                message.update({"postSubject":sort_group[locate-1]["sub"]["name"]})
+                        message.update({"postNumber":0})
+                        
+                        updatevalue(usr_nm, CURRENT_READ, sort_group[locate-1]["sub"])
+
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+ 
+                elif CURRENT_MODE == MODE_AG or CURRENT_MODE == MODE_SG:
                     if CURRENT_MODE == MODE_AG:
                         message = {"type":INPUT_AG, "userID":usr_nm}
                     else:
@@ -239,8 +316,8 @@ def main():
                         else:
                             printformat(N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_nm)
                             N_TICK = N_TICK + 1
+                
                 continue
-
 
 
             if usr_input[0] == INPUT_QUIT or usr_input[0] == INPUT_Q:
@@ -338,7 +415,7 @@ def main():
                         "userID":usr_nm,
                         "groupList":usr_input[1]
                     }
-                    print(message)
+                    #print(message)
                     if len(usr_input) > 2:
                         pattern = re.compile("\d+")
                         if pattern.match(usr_input[2]):
@@ -353,6 +430,9 @@ def main():
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                     
                     CURRENT_READ = rec["groupData"]
+ 
+                    #updatevalue(usr_nm, CURRENT_READ, CURRENT_READ["content"]["subjects"][0])
+                   
                     CURRENT_MODE = MODE_RG
                     printread(N_VALUE, N_TICK, CURRENT_READ, usr_nm)
                     N_TICK = N_TICK + 1      
