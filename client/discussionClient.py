@@ -98,7 +98,7 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
                 if("total_posts" not in cur["data"]):
                     tot = CURRENT_READ[i]["content"]["total_posts"]
                 else:
-                    tot = CURRENT_READ[i]["total_posts"] - g["data"]["total_posts"]
+                    tot = CURRENT_READ[i]["content"]["total_posts"] - g["data"]["total_posts"]
                 print(frmt % (i+1,".", str(tot), CURRENT_READ[i]["name"]))
     return
 
@@ -159,6 +159,7 @@ def main():
     INPUT_U         = "u"
     INPUT_N         = "n"
     INPUT_R         = "r"
+    INPUT_P         = "p"
     SUCCESS         = "success"
     ERROR           = "error"
     END_PACKET      = "/*/!/$/*"
@@ -229,11 +230,14 @@ def main():
                             split = usr_input[1].split("-")
                             for locate in range(int(split[0]), int(split[1])+1):
                                 message.update({"postSubject":sort_group[locate-1]["sub"]["name"]})
-                        message.update({"postNumber":0})
+                        message.update({"postNumber":1})
                         
                         updatevalue(usr_nm, CURRENT_READ, sort_group[locate-1]["sub"])
 
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                   # elif usr_input[0] == INPUT_P:
+                        # Create post - Author/Content/Subject - Server handles the rest.
+
  
                 elif CURRENT_MODE == MODE_AG or CURRENT_MODE == MODE_SG:
                     if CURRENT_MODE == MODE_AG:
