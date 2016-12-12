@@ -544,9 +544,10 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
     #TODO
     post_thread = None
     with lock:
-        for s in current_group["subjects"]:
+        cg = current_group["content"]
+        for s in cg["subjects"]:
             if s["name"] == postData["subject"]:
-                post_thread = s
+                post_thread = s["thread"]
                 break
         if post_thread is not None:
             new_post = {}
