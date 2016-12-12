@@ -496,8 +496,8 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
                 senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_P:
             # makes a new post in groupName
-            postData = message["body"]
-            # createpost(userid, postData)
+            postData = message
+            createpost(clientsocket, current_client, current_group, postData, lock)
         elif subcommand == SUB_Q:
             # exits AG mode
             res = responsebuilder(threadid, "Success", "Exit RG Mode successfully.")
@@ -518,8 +518,7 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
     print(postNumber)
     postNumber -= 1
     with lock:
-        cg = current_group["content"]
-        for s in cg["subjects"]:
+        for s in current_group["subjects"]:
             if s["name"] == postSubject:
                 post_thread = s["thread"]
                 break
@@ -542,11 +541,12 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
     """
     #TODO
     post_thread = None
+    print("\n\n\n DATA SUBJECT\n" + str(postData["subject"]))
     with lock:
-        cg = current_group["content"]
-        for s in cg["subjects"]:
+        for s in current_group["subjects"]:
+            print("\n\n\n S NAME\n" + str(s))
             if s["name"] == postData["subject"]:
-                post_thread = s["thread"]
+                post_thread = s
                 break
         if post_thread is not None:
             new_post = {}
@@ -554,10 +554,10 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
             current_group["total_posts"] += 1
             new_post.update({"postNumber": post_thread["postCount"]})
             new_post.update({"usersViewed": [current_client["id"]]})
-            new_post.update({"data": get_time()})
+            new_post.update({"date": get_time()})
             for key, value in postData.items():
                 new_post.update({key: value})
-            post_thread.add(new_post)
+            post_thread["thread"].append(new_post)
             update_groups_data(current_group)
             res = responsebuilder(threadid, "Success", "Post created")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)

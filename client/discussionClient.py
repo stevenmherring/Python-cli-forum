@@ -304,9 +304,20 @@ def main():
                         else:
                             printread(N_VALUE, N_TICK, CURRENT_READ,  usr_nm)
                             N_TICK = N_TICK + 1
-                   # elif usr_input[0] == INPUT_P:
+                    elif usr_input[0] == INPUT_P:
                         # Create post - Author/Content/Subject - Server handles the rest.
-
+                        sub = input(">Subject: ")
+                        auth = input(">Author: ")
+                        post = input(">Message: ")
+                        message = {
+                            "type": INPUT_RG,
+                            "userID": usr_nm,
+                            "subcommand": INPUT_P,
+                            "subject": sub,
+                            "author": auth,
+                            "content": post
+                        }
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
  
                 elif CURRENT_MODE == MODE_AG or CURRENT_MODE == MODE_SG:
                     if CURRENT_MODE == MODE_AG:
