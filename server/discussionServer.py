@@ -461,7 +461,7 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
     current_group = loadcurrentgroup(groupName, lock)
     # build initial posting response ie. posts 1-msgCount
 
-    res = { "type": "Success", "groupData": current_group } 
+    res = { "type": "Success", "groupData": current_group }
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
     while True:
@@ -518,10 +518,12 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
     Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
     post_thread = None
+    postNumber += 1  # Offset index
     with lock:
-        for s in current_group["subjects"]:
+        cg = current_group["content"]
+        for s in cg["subjects"]:
             if s["name"] == postSubject:
-                post_thread = s
+                post_thread = s["thread"]
                 break
         if post_thread is not None:
             if userid not in post_thread[postNumber]["usersViewed"]:
