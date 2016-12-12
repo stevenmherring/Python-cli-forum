@@ -272,12 +272,13 @@ def main():
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                         rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                         print (rec["body"])
+                        continue
                     elif usr_input[0] == INPUT_R:
                         message.update({"subcommand":INPUT_R})
                         pattern_1 = re.compile("\d+")
                         pattern_2 = re.compile("\d+-\d+")
                         
-                        print(sort_group)
+                        #print(sort_group)
 
                         if(pattern_1.match(usr_input[1])):
                             locate = int(usr_input[1])
@@ -289,9 +290,20 @@ def main():
                             for locate in range(int(split[0]), int(split[1])+1):
                                 message.update({"postSubject":sort_group[locate-1]["name"]})
                                 message.update({"postNumber":sort_group[locate-1]["cont"]["postNumber"]})                            
-                        
-
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        if(rec["type"] == "Error"):
+                            CURRENT_READ = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)["groupList"]
+                    elif (usr_input[0] == INPUT_N):
+                        if(N_TICK * N_VALUE >= len(CURRENT_READ)):
+                            message.update({"subcommand":INPUT_Q})
+                            senddata(cl_socket,message,DEFAULT_SIZE,END_PACKET)
+                            CURRENT_MODE = MODE_ST
+                            rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                            print (rec["body"])
+                        else:
+                            printread(N_VALUE, N_TICK, CURRENT_READ,  usr_nm)
+                            N_TICK = N_TICK + 1
                    # elif usr_input[0] == INPUT_P:
                         # Create post - Author/Content/Subject - Server handles the rest.
 
@@ -491,8 +503,6 @@ def main():
                     rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
                     
                     CURRENT_READ = rec["groupData"]
- 
-                    #updatevalue(usr_nm, CURRENT_READ, CURRENT_READ["content"]["subjects"][0])
                    
                     CURRENT_MODE = MODE_RG
                     printread(N_VALUE, N_TICK, CURRENT_READ, usr_nm)
