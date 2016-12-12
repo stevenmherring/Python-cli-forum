@@ -195,11 +195,7 @@ def loadgroups(lock):
             try:
                 with open(os.path.join(__location__, GROUPS_PATH + g["path"])) as f:
                     temp_content = json.loads(f.read())
-                    temp_group = {
-                        "name": g["name"],
-                        "content": temp_content
-                    }
-                    groupsContent.append(temp_group)
+                    groupsContent.append(temp_content)
             except IOError as err:
                 debugprint("no data file for " + g["name"] + "\n")
                 continue
@@ -409,6 +405,7 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
         if g["name"] in current_client["subscriptions"]:
             temp_list.append(loadcurrentgroup(g["name"], lock))
     res.update({"groupList": temp_list})
+    print(str(res))
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -518,6 +515,8 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
     Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
     post_thread = None
+    print(postNumber)
+    postNumber -= 1
     with lock:
         cg = current_group["content"]
         for s in cg["subjects"]:
@@ -525,6 +524,7 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
                 post_thread = s["thread"]
                 break
         if post_thread is not None:
+            print(str(post_thread))
             if userid not in post_thread[postNumber]["usersViewed"]:
                 post_thread[postNumber]["usersViewed"].append(userid)
                 update_groups_data(current_group)
@@ -532,7 +532,7 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
                 senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
             else:
                 # error, postNumbers not aligned
-                res = responsebuilder("Error", "Post not found")
+                res = responsebuilder(threadid, "Error", "Post not found")
                 senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 
@@ -554,6 +554,7 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
             current_group["total_posts"] += 1
             new_post.update({"postNumber": post_thread["postCount"]})
             new_post.update({"usersViewed": [current_client["id"]]})
+            new_post.update({"data": get_time()})
             for key, value in postData.items():
                 new_post.update({key: value})
             post_thread.add(new_post)
