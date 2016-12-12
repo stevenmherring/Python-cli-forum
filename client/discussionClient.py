@@ -19,7 +19,8 @@ def loadvalue   (usr_id):
     
     return load
 
-def updatevalue (usr_id, group, subject):
+
+def updatecheck (usr_id, group):
     val = loadvalue(usr_id)
     with open("data.txt", "w") as f:
         #Start by iterating over all instances in val for the correct username
@@ -31,7 +32,40 @@ def updatevalue (usr_id, group, subject):
                         {group["name"]:{"total_posts":group["content"]["total_posts"], "subs":{}}}
                     )
                 i["data"][group["name"]]["total_posts"] = group["content"]["total_posts"]
-                i["data"][group["name"]]["subs"].update({subject["name"]:subject["postCount"]})
+        json.dump(val, f)
+    return
+
+
+def updatevalue (usr_id, group, subject):
+    createvalue(usr_id, group, subject)
+
+    val = loadvalue(usr_id)
+    with open("data.txt", "w") as f:
+        #Start by iterating over all instances in val for the correct username
+        for i in val["client"]:
+            if(i["usr"] == usr_id):
+                #print (group)
+                if(group["name"] not in i["data"]):
+                    i["data"].update(
+                        {group["name"]:{"total_posts":group["content"]["total_posts"], "subs":{}}}
+                    )
+                i["data"][group["name"]]["subs"][subject["name"]] += 1
+        json.dump(val, f)
+    return
+
+def createvalue (usr_id, group, subject):
+    val = loadvalue(usr_id)
+    with open("data.txt", "w") as f:
+        #Start by iterating over all instances in val for the correct username
+        for i in val["client"]:
+            if(i["usr"] == usr_id):
+                #print (group)
+                if(group["name"] not in i["data"]):
+                    i["data"].update(
+                        {group["name"]:{"total_posts":group["content"]["total_posts"], "subs":{}}}
+                    )
+                if(subject["name"] not in i["data"][group["name"]]["subs"]):
+                    i["data"][group["name"]]["subs"].update({subject["name"]:0})
         json.dump(val, f)
     return
 
@@ -49,32 +83,40 @@ def check_new (group, current_subject, usr_id):
                     if(i["data"][group_name]["subs"][current_subject["name"]] == current_subject["postCount"]):
                         return False
             else:
-                updatevalue(usr_id, group, current_subject)
+                createvalue(usr_id, group, current_subject)
     return True        
                             
 
 def printread (N_VALUE, N_TICK, CURRENT_READ, usr_id):
+    print(CURRENT_READ["content"])
     read = CURRENT_READ["content"]["subjects"]
-    data = []
-    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
-        if(i < len(read)):
-            if(check_new(CURRENT_READ, read[i], usr_id) == True):
-                new = "N"
-            else:
-                new = " "
-            data.append({
-                "num" : i+1, 
-                "date" : read[i]["thread"][int(read[i]["postCount"])-1]["date"],
-                "name" : read[i]["name"],
-                "new"  : new,
-                "sub"  : read[i]
-            })
-    group = sorted(data, key=operator.itemgetter('new'), reverse = True)
-    del sort_group[:]
-    for k in group:
-        print("%d. %s  %s  %s" % (k["num"], k["new"], k["date"], k["name"]))
-        sort_group.append(k)
+    loadposts(CURRENT_READ, usr_id)    
 
+    for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
+        if(i < len(sort_group)):
+            print("%d. %s  %s  %s" % (sort_group["num"], sort_group["new"], sort_group["date"], sort_group["name"]))
+
+def loadposts (CURRENT_READ, usr_id):
+    del sort_group[:]
+    data = []
+    tick = 0
+    for i in CURRENT_READ["content"]["subjects"] :
+        for k in i["thread"]:
+            new = " "
+            if( usr_id in k["usersViewed"] ):
+                new = "N"
+            data.append({
+                "num" : 0,
+                "date": k["date"],
+                "name": i["name"],
+                "cont": k,
+                "new" : new
+            })
+    group = sorted((time.strptime(d["date"], "%Y-%m-%d %H:%M:%S") for d in data), reverse=True)
+    for k in group:
+        tick = tick + 1
+        k["num"] = tick
+        sort_group.append(k)
 
 def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
     if(CURRENT_MODE == MODE_AG):
@@ -95,10 +137,15 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
                 for g in tmp["client"]:
                     if(g["usr"] == usr_id):
                         cur = g
-                if("total_posts" not in cur["data"]):
+
+
+                if(CURRENT_READ[i]["name"] not in cur["data"] or "total_posts" not in cur["data"][CURRENT_READ[i]["name"]]):
                     tot = CURRENT_READ[i]["content"]["total_posts"]
                 else:
-                    tot = CURRENT_READ[i]["total_posts"] - g["data"]["total_posts"]
+                    print(cur["data"][CURRENT_READ[i]["name"]])
+                    print(CURRENT_READ[i]["content"])
+                    tot = CURRENT_READ["content"]["total_posts"] - cur["data"][CURRENT_READ[i]["name"]]["total_posts"]
+                updatecheck(usr_id, CURRENT_READ[i])
                 print(frmt % (i+1,".", str(tot), CURRENT_READ[i]["name"]))
     return
 
