@@ -1,3 +1,4 @@
+from datetime import datetime
 from socket import *
 from termcolor import colored
 from da_protocols import senddata, receivedata
@@ -88,8 +89,7 @@ def check_new (group, current_subject, usr_id):
                             
 
 def printread (N_VALUE, N_TICK, CURRENT_READ, usr_id):
-    print(CURRENT_READ["content"])
-    read = CURRENT_READ["content"]["subjects"]
+    read = CURRENT_READ["subjects"]
     loadposts(CURRENT_READ, usr_id)    
 
     val = N_TICK*N_VALUE+1
@@ -101,20 +101,29 @@ def printread (N_VALUE, N_TICK, CURRENT_READ, usr_id):
 def loadposts (CURRENT_READ, usr_id):
     del sort_group[:]
     data = []
+    read = []
     tick = 0
-    for i in CURRENT_READ["content"]["subjects"] :
+    for i in CURRENT_READ["subjects"] :
         for k in i["thread"]:
             new = " "
-            if( usr_id in k["usersViewed"] ):
-                new = "N"
-            data.append({
+            if( usr_id not in k["usersViewed"] ):
+                new = "N"    
+            value = {
                 "date": k["date"],
                 "name": i["name"],
                 "cont": k,
                 "new" : new
-            })
-    group = sorted((time.strptime(d["date"], "%Y-%m-%d %H:%M:%S") for d in data), reverse=True)
+            }
+            if(new == " "):
+                read.append(value)
+            else:
+                data.append(value)
+    data.sort(key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d %H:%M:%S"))
+    read.sort(key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d %H:%M:%S"))
+
     for k in data:
+        sort_group.append(k)
+    for k in read:
         sort_group.append(k)
 
 def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):

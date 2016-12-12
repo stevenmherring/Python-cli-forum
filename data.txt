@@ -1,1 +1,1 @@
-{"client": [{"usr": "1337", "data": {"group.2.com": {"subs": {"subject1": 2, "subject2": 2}, "total_posts": 4}}}]}
+{"client": [{"data": {"group.3.com": {"subs": {}, "total_posts": 4}, "group.2.com": {"subs": {}, "total_posts": 4}, "group.1.com": {"subs": {}, "total_posts": 4}, "group.4.com": {"subs": {}, "total_posts": 4}, "group.5.com": {"subs": {}, "total_posts": 4}}, "usr": "1337"}]}
