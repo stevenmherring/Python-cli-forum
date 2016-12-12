@@ -92,9 +92,11 @@ def printread (N_VALUE, N_TICK, CURRENT_READ, usr_id):
     read = CURRENT_READ["content"]["subjects"]
     loadposts(CURRENT_READ, usr_id)    
 
+    val = N_TICK*N_VALUE
     for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
         if(i < len(sort_group)):
-            print("%d. %s  %s  %s" % (sort_group["num"], sort_group["new"], sort_group["date"], sort_group["name"]))
+            print("%d. %s  %s  %s" % (val, sort_group[i]["new"], sort_group[i]["date"], sort_group[i]["name"]))
+            val = val + 1
 
 def loadposts (CURRENT_READ, usr_id):
     del sort_group[:]
@@ -106,16 +108,13 @@ def loadposts (CURRENT_READ, usr_id):
             if( usr_id in k["usersViewed"] ):
                 new = "N"
             data.append({
-                "num" : 0,
                 "date": k["date"],
                 "name": i["name"],
                 "cont": k,
                 "new" : new
             })
     group = sorted((time.strptime(d["date"], "%Y-%m-%d %H:%M:%S") for d in data), reverse=True)
-    for k in group:
-        tick = tick + 1
-        k["num"] = tick
+    for k in data:
         sort_group.append(k)
 
 def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
