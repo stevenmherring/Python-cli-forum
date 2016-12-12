@@ -269,13 +269,14 @@ def main():
 
                         if(pattern_1.match(usr_input[1])):
                             locate = int(usr_input[1])
-                            message.update({"postSubject":sort_group[locate-1]["sub"]["name"]})
+                            message.update({"postSubject":sort_group[locate-1]["name"]})
+                            message.update({"postNumber":sort_group[locate-1]["cont"]["postNumber"]
   
                         elif(pattern_2.match(usr_input[1])):
                             split = usr_input[1].split("-")
                             for locate in range(int(split[0]), int(split[1])+1):
-                                message.update({"postSubject":sort_group[locate-1]["sub"]["name"]})
-                        message.update({"postNumber":1})
+                                message.update({"postSubject":sort_group[locate-1]["name"]})
+                                message.update({"postNumber":sort_group[locate-1]["cont"]["postNumber"]                            
                         
                         updatevalue(usr_nm, CURRENT_READ, sort_group[locate-1]["sub"])
 
