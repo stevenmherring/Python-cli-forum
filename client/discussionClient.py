@@ -29,9 +29,9 @@ def updatecheck (usr_id, group):
                 #print (group)
                 if(group["name"] not in i["data"]):
                     i["data"].update(
-                        {group["name"]:{"total_posts":group["content"]["total_posts"], "subs":{}}}
+                        {group["name"]:{"total_posts":group["total_posts"], "subs":{}}}
                     )
-                i["data"][group["name"]]["total_posts"] = group["content"]["total_posts"]
+                i["data"][group["name"]]["total_posts"] = group["total_posts"]
         json.dump(val, f)
     return
 
@@ -124,7 +124,7 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
     else:
         frmt = "%d%-5s%s    %s"
     for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
-        if ( i < len(CURRENT_READ) ):
+        if ( i < len(CURRENT_READ)-1 ):
             if(CURRENT_MODE == MODE_AG):
                 if(CURRENT_READ[i]["name"] in client_data["subscriptions"]):
                     sub = "s"
@@ -138,13 +138,12 @@ def printformat (N_VALUE, N_TICK, CURRENT_READ, CURRENT_MODE, usr_id):
                     if(g["usr"] == usr_id):
                         cur = g
 
+                print(CURRENT_READ[i])
 
                 if(CURRENT_READ[i]["name"] not in cur["data"] or "total_posts" not in cur["data"][CURRENT_READ[i]["name"]]):
-                    tot = CURRENT_READ[i]["content"]["total_posts"]
+                    tot = CURRENT_READ[i]["total_posts"]
                 else:
-                    print(cur["data"][CURRENT_READ[i]["name"]])
-                    print(CURRENT_READ[i]["content"])
-                    tot = CURRENT_READ["content"]["total_posts"] - cur["data"][CURRENT_READ[i]["name"]]["total_posts"]
+                    tot = CURRENT_READ[i]["total_posts"] - cur["data"][CURRENT_READ[i]["name"]]["total_posts"]
                 updatecheck(usr_id, CURRENT_READ[i])
                 print(frmt % (i+1,".", str(tot), CURRENT_READ[i]["name"]))
     return
