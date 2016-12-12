@@ -518,7 +518,6 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
     Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
     post_thread = None
-    postNumber += 1  # Offset index
     with lock:
         cg = current_group["content"]
         for s in cg["subjects"]:
@@ -551,12 +550,13 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
                 break
         if post_thread is not None:
             new_post = {}
+            post_thread["postCount"] += 1
+            current_group["total_posts"] += 1
             new_post.update({"postNumber": post_thread["postCount"]})
             new_post.update({"usersViewed": [current_client["id"]]})
-            post_thread["postCount"] += 1
             for key, value in postData.items():
                 new_post.update({key: value})
-            post_thread["thread"].add(new_post)
+            post_thread.add(new_post)
             update_groups_data(current_group)
             res = responsebuilder(threadid, "Success", "Post created")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
@@ -598,7 +598,7 @@ def get_time():
     """
     Returns a string format of the current time
     """
-    ret = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+    ret = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())  # 2016-12-07 18:35:57
     return ret
 
 
