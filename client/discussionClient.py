@@ -92,7 +92,7 @@ def printread (N_VALUE, N_TICK, CURRENT_READ, usr_id):
     read = CURRENT_READ["content"]["subjects"]
     loadposts(CURRENT_READ, usr_id)    
 
-    val = N_TICK*N_VALUE
+    val = N_TICK*N_VALUE+1
     for i in range(N_TICK*N_VALUE, (N_TICK+1)*N_VALUE):
         if(i < len(sort_group)):
             print("%d. %s  %s  %s" % (val, sort_group[i]["new"], sort_group[i]["date"], sort_group[i]["name"]))
@@ -469,7 +469,7 @@ def main():
                         pattern = re.compile("\d+")
                         if pattern.match(usr_input[2]):
                             message.update({"N" : usr_input[2]})
-                            N_VALUE = int(usr_input[3])
+                            N_VALUE = int(usr_input[2])
                         else:
                             N_VALUE = N_DEFAULT
                     else:
