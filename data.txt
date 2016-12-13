@@ -1,1 +1,1 @@
-{"client": [{"data": {"group.2.com": {"total_posts": 4, "subs": {}}, "group.4.com": {"total_posts": 4, "subs": {}}, "group.3.com": {"total_posts": 4, "subs": {}}, "group.5.com": {"total_posts": 6, "subs": {}}, "group.1.com": {"total_posts": 4, "subs": {}}}, "usr": "1337"}]}
+{"client": [{"data": {"group.4.com": {"total_posts": 4, "subs": {}}, "group.1.com": {"total_posts": 4, "subs": {}}, "group.3.com": {"total_posts": 4, "subs": {}}, "group.2.com": {"total_posts": 4, "subs": {}}, "group.5.com": {"total_posts": 6, "subs": {}}}, "usr": "1337"}]}

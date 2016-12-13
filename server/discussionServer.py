@@ -9,6 +9,87 @@ from termcolor import colored  # for setting output color source: https://pypi.p
 from da_protocols import senddata, receivedata
 import threading, sys, os, time, json, random
 
+"""
+Default APP info
+"""
+AUTHOR_FILE = "../AUTHORS"
+authors = ""
+__location__ = ""
+
+"""
+String Messages
+"""
+IO_ERROR = "IO Error, terminating connection.\n"
+
+"""
+Color definitions
+"""
+COLOR_ERROR = "red"
+COLOR_IMPORTANT = "cyan"
+COLOR_OUTGOING = "magenta"
+COLOR_TASK_START = "blue"
+COLOR_TASK_FINISH = "white"
+
+"""
+Client commands
+"""
+REQUEST_LOGIN = "login"
+REQUEST_LOGOUT = "logout"
+REQUEST_HELP = "help"
+REQUEST_AG = "ag"
+REQUEST_SG = "sg"
+REQUEST_RG = "rg"
+REQUEST_QUIT = "quit"
+
+SUB_S = "s"
+SUB_U = "u"
+SUB_N = "n"
+SUB_Q = "q"
+SUB_ID = "id"
+SUB_R = "r"
+SUB_P = "p"
+
+"""
+Socket Information
+"""
+PACKET_LENGTH = 4096
+PORT_NUMBER = 9399
+END_PACKET = "/*/!/$/*"
+DEFAULT_SEND_SIZE = PACKET_LENGTH - len(END_PACKET)
+
+"""
+Default Server Values
+"""
+CLIENT_FILE_STRUCT = {
+    "clients": []
+}
+GROUP_FILE_STRUCT = {
+    "total_posts": 0,
+    "last_modified": "",
+    "subjects": []
+}
+CLIENT_DATA_FILE = "clients/ids.json"
+GROUPS_PATH = "groups/"
+GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
+DEFAULT_N = 3
+DELAY_PRINT = 0.025
+MAX_CLIENTS = 50
+
+"""
+Server data
+"""
+groupsContent = []
+mainlock = threading.Lock()
+clients = []
+id_list = []
+groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
+
+"""
+Debug Stuff
+"""
+debugMode = False
+COLOR_DEBUG = "red"
+
 
 class ClientHandler(threading.Thread):
     """
@@ -668,134 +749,9 @@ def main():
     """
     Def Main
     """
+    global authors, debugMode, __location__
+    global clients, groups, groupsContent
 
-    """
-    Default APP info
-    """
-    global __location__
-    global AUTHOR_FILE
-    global authors
-    AUTHOR_FILE = "../AUTHORS"
-
-    """
-    String Messages
-    """
-    global IO_ERROR
-    IO_ERROR = "IO Error, terminating connection.\n"
-
-    """
-    Color definitions
-    """
-    global COLOR_ERROR
-    global COLOR_IMPORTANT
-    global COLOR_OUTGOING
-    global COLOR_TASK_START
-    global COLOR_TASK_FINISH
-    COLOR_ERROR = "red"
-    COLOR_IMPORTANT = "cyan"
-    COLOR_OUTGOING = "magenta"
-    COLOR_TASK_START = "blue"
-    COLOR_TASK_FINISH = "white"
-
-    """
-    Client commands
-    """
-    global REQUEST_LOGIN
-    global REQUEST_AG
-    global REQUEST_HELP
-    global REQUEST_LOGOUT
-    global REQUEST_SG
-    global REQUEST_RG
-    global REQUEST_QUIT
-    REQUEST_LOGIN = "login"
-    REQUEST_LOGOUT = "logout"
-    REQUEST_HELP = "help"
-    REQUEST_AG = "ag"
-    REQUEST_SG = "sg"
-    REQUEST_RG = "rg"
-    REQUEST_QUIT = "quit"
-
-    global SUB_S
-    global SUB_U
-    global SUB_N
-    global SUB_Q
-    global SUB_ID
-    global SUB_R
-    global SUB_P
-    SUB_S = "s"
-    SUB_U = "u"
-    SUB_N = "n"
-    SUB_Q = "q"
-    SUB_ID = "id"
-    SUB_R = "r"
-    SUB_P = "p"
-
-    """
-    Socket Information
-    """
-    global PACKET_LENGTH
-    global PORT_NUMBER
-    global END_PACKET
-    global DEFAULT_SEND_SIZE
-    PACKET_LENGTH = 4096
-    PORT_NUMBER = 9399
-    END_PACKET = "/*/!/$/*"
-    DEFAULT_SEND_SIZE = PACKET_LENGTH - len(END_PACKET)
-
-    """
-    Default Server Values
-    """
-    global CLIENT_DATA_FILE
-    global GROUPS_PATH
-    global GROUPS_DATA_FILE
-    global DEFAULT_N
-    global DELAY_PRINT
-    global MAX_CLIENTS
-    global CLIENT_FILE_STRUCT
-    CLIENT_FILE_STRUCT = {
-        "clients": []
-    }
-    global GROUP_FILE_STRUCT
-    GROUP_FILE_STRUCT = {
-        "total_posts": 0,
-        "last_modified": "",
-        "subjects": []
-    }
-    CLIENT_DATA_FILE = "clients/ids.json"
-    GROUPS_PATH = "groups/"
-    GROUPS_DATA_FILE = GROUPS_PATH + "groups.json"
-    DEFAULT_N = 3
-    DELAY_PRINT = 0.025
-    MAX_CLIENTS = 50
-
-    """
-    Server data
-    """
-    global id_list
-    global groups
-    global groupsContent
-    groupsContent = []
-    mainlock = threading.Lock()
-    global clients
-    clients = []
-    id_list = []
-    groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
-
-    """
-    Dirty Flags
-    """
-    global group_data_dirty
-    global client_data_dirty
-    group_data_dirty = False
-    group_client_dirty = False #TODO: track data changes in the code, to switch flag True, before data use check and fetch data.
-
-    """
-    Debug Stuff
-    """
-    global debugMode
-    global COLOR_DEBUG
-    debugMode = False
-    COLOR_DEBUG = "red"
     print(get_time())
     # preload group and client information
     for s in sys.argv:
