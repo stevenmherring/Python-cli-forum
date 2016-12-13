@@ -247,6 +247,7 @@ def main():
         sys.exit(1)
     ipaddr = sys.argv[1]
     cl_socket = establishconnection(ipaddr, DEFAULT_PORT)
+    print("Successful Connection! Login to continue...")
     try:
         # print "Attempting to connect to " + ipaddr + ":" + DEFAULT_PORT
         while True:
