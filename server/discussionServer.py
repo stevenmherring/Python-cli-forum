@@ -342,7 +342,7 @@ def updateclients():
     temp = CLIENT_FILE_STRUCT
     temp["clients"] = clients
     with open(path.join(__location__, CLIENT_DATA_FILE), "w") as f:
-        dump(temp, f)
+        dumps(temp, f)
 
 
 def loginclient(clientsocket, userid, lock):
