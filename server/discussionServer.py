@@ -4,10 +4,16 @@
 Python Discussion Application: Server
 """
 
-from socket import *
+from json import dumps, loads
+from os import getcwd, path
+from random import randint
+from socket import AF_INET, SOCK_STREAM, socket, SO_REUSEADDR, SOL_SOCKET
+from sys import argv, stdout
+from threading import Lock, Thread
+from time import gmtime, sleep, strftime
+
 from termcolor import colored  # for setting output color source: https://pypi.python.org/pypi/termcolor
-from da_protocols import senddata, receivedata
-import threading, sys, os, time, json, random
+from da_protocols import receivedata, senddata
 
 """
 Default APP info
@@ -15,7 +21,6 @@ Default APP info
 AUTHOR_FILE = "../AUTHORS"
 authors = ""
 __location__ = ""
-
 """
 String Messages
 """
@@ -79,7 +84,7 @@ MAX_CLIENTS = 50
 Server data
 """
 groupsContent = []
-mainlock = threading.Lock()
+mainlock = Lock()
 clients = []
 id_list = []
 groups = {}  # pull from groups directory, each subdir is a group with *.txt files for each thread
@@ -91,12 +96,12 @@ debugMode = False
 COLOR_DEBUG = "red"
 
 
-class ClientHandler(threading.Thread):
+class ClientHandler(Thread):
     """
     Handles new Client connections
     """
     def __init__(self, threadid, clientsocket, clientaddr, lock):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
         self.threadid = threadid
         self.clientsocket = clientsocket
         self.clientaddr = clientaddr
@@ -165,23 +170,23 @@ class ClientHandler(threading.Thread):
                             groupName = req["groupList"]
                             enter_rg_mode(clientsocket, current_client, groupName, lock)
                         else:
-                            sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n")
-                                                     , COLOR_ERROR))
-                            sys.stdout.flush()
+                            stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n"),
+                                                 COLOR_ERROR))
+                            stdout.flush()
                             res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client "
                                                                       + userid))
                             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
                     else:
-                        sys.stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n"),
-                                                 COLOR_ERROR))
-                        sys.stdout.flush()
-                        res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client "
-                                                                  + userid))
+                        stdout.write(colored(("Unsupported command: " + msgType + " by client " + userid + "\n"),
+                                             COLOR_ERROR))
+                        stdout.flush()
+                        res = responsebuilder(threadid, "Error", ("Unsupported command: " + msgType + " by client " +
+                                                                  userid))
                         senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
                 except IOError as err:
-                    sys.stdout.write(colored(err, COLOR_ERROR))
-                    sys.stdout.flush()
+                    stdout.write(colored(err, COLOR_ERROR))
+                    stdout.flush()
                     res = {
                         "type": "Error",
                         "body": IO_ERROR
@@ -199,8 +204,8 @@ def responsebuilder(threadid, mtype, body):
         "type": mtype,
         "body": body
     }
-    sys.stdout.write(colored(("Thread: " + threadid + json.dumps(response) + "\n"), COLOR_OUTGOING))
-    sys.stdout.flush()
+    stdout.write(colored(("Thread: " + threadid + dumps(response) + "\n"), COLOR_OUTGOING))
+    stdout.flush()
     return response
 
 
@@ -241,16 +246,16 @@ def typeprint(message, color):
     """
     for c in message:
         delay(DELAY_PRINT)
-        sys.stdout.write(colored(c, color))
-        sys.stdout.flush()
+        stdout.write(colored(c, color))
+        stdout.flush()
 
 
 def updateprint(message, color):
     """
     Quick print w/ color
     """
-    sys.stdout.write(colored(message, color))
-    sys.stdout.flush()
+    stdout.write(colored(message, color))
+    stdout.flush()
 
 
 def debugprint(message):
@@ -258,8 +263,8 @@ def debugprint(message):
     Debug messaging function, only prints if debug mode is enabled
     """
     if debugMode:
-        sys.stdout.write(colored(message, COLOR_DEBUG, None, ['underline']))
-        sys.stdout.flush()
+        stdout.write(colored(message, COLOR_DEBUG, None, ['underline']))
+        stdout.flush()
 
 
 def loadgroups(lock):
@@ -269,13 +274,13 @@ def loadgroups(lock):
     # load groups & groups content
     typeprint("Populating discussion groups....\n", COLOR_TASK_START)
     with lock:
-        with open(os.path.join(__location__, GROUPS_DATA_FILE), "r") as f:
-            groupsdata = json.loads(f.read())
+        with open(path.join(__location__, GROUPS_DATA_FILE), "r") as f:
+            groupsdata = loads(f.read())
             groups = groupsdata["groups"]
         for g in groups:
             try:
-                with open(os.path.join(__location__, GROUPS_PATH + g["path"])) as f:
-                    temp_content = json.loads(f.read())
+                with open(path.join(__location__, GROUPS_PATH + g["path"])) as f:
+                    temp_content = loads(f.read())
                     groupsContent.append(temp_content)
             except IOError as err:
                 debugprint("no data file for " + g["name"] + "\n")
@@ -292,8 +297,8 @@ def loadclients(lock):
     # load clients
     typeprint("Populating client data....\n", COLOR_TASK_START)
     with lock:
-        with open(os.path.join(__location__, CLIENT_DATA_FILE), "r") as f:
-            clientdata = json.loads(f.read())
+        with open(path.join(__location__, CLIENT_DATA_FILE), "r") as f:
+            clientdata = loads(f.read())
             clients = clientdata["clients"]
             id_list = []
             for user in clients:
@@ -313,7 +318,7 @@ def createclient(clientID, lock):
     global id_list
     new_id = -1
     while True:
-        new_id = random.randint(0000, 9999)  # generate a new ID for the user
+        new_id = randint(0000, 9999)  # generate a new ID for the user
         if new_id not in id_list:  # found a vacant ID
             break
 
@@ -336,8 +341,8 @@ def updateclients():
     """
     temp = CLIENT_FILE_STRUCT
     temp["clients"] = clients
-    with open(os.path.join(__location__, CLIENT_DATA_FILE), "w") as f:
-        json.dump(temp, f)
+    with open(path.join(__location__, CLIENT_DATA_FILE), "w") as f:
+        dump(temp, f)
 
 
 def loginclient(clientsocket, userid, lock):
@@ -544,7 +549,8 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
         subcommand = message["subcommand"].lower()
         if subcommand == SUB_ID:
             # enter read post mode - this can be handled completely by the client side
-            res = responsebuilder(threadid, "Error", "Client should store and handle the data read post mode, no need for server comm.")
+            res = responsebuilder(threadid, "Error", "Client should store and handle the data read post mode, "
+                                                     "no need for server comm.")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         elif subcommand == SUB_R:
             # mark post read
@@ -553,7 +559,6 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
             markpostread(clientsocket, userid, current_group, postSubject, postNum, lock)
         elif subcommand == SUB_N:
             # lists next N posts in groupName
-            # TODO this needs to confirm there arent new posts with the server...if no new posts, client handles it...if new posts, resend the post lists
             client_mod_time = message["last_modification_time"]
             if not isgroupcurrent(client_mod_time, groupName, lock):
                 current_group = loadcurrentgroup(groupName, lock)
@@ -610,7 +615,6 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
     """
     Creates a post from user
     """
-    #TODO
     post_thread = None
     with lock:
         for s in current_group["subjects"]:
@@ -650,6 +654,7 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
             res = responsebuilder(threadid, "Success", "New subject and post created")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
+
 def update_groups_data(current_group):
     """
     Updates current group data structures
@@ -661,8 +666,8 @@ def update_groups_data(current_group):
     for g in groups:
         if g["name"] == current_group["name"]:
             temp_group = g
-    with open(os.path.join(__location__, GROUPS_PATH + temp_group["path"]), "w") as f:
-        json.dump(current_group, f)
+    with open(path.join(__location__, GROUPS_PATH + temp_group["path"]), "w") as f:
+        dumps(current_group, f)
 
 
 def isgroupcurrent(client_time, groupname, lock):
@@ -683,7 +688,7 @@ def get_time():
     """
     Returns a string format of the current time
     """
-    ret = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())  # 2016-12-07 18:35:57
+    ret = strftime("%Y-%m-%d %H:%M:%S", gmtime())  # 2016-12-07 18:35:57
     return ret
 
 
@@ -717,8 +722,7 @@ def initlocation():
     """
     Initialize and return CWD of the process, so we can reliably open files we know should exist
     """
-    ret = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    ret = path.realpath(path.join(getcwd(), path.dirname(__file__)))
     return ret
 
 
@@ -726,7 +730,7 @@ def delay(t):
     """
     Sleep for time t.
     """
-    time.sleep(t)
+    sleep(t)
 
 
 def beginlistening(serverSocket, lock):
@@ -736,8 +740,8 @@ def beginlistening(serverSocket, lock):
     typeprint(("Server started listening on port " + str(PORT_NUMBER) + "\n"), COLOR_IMPORTANT)
     threadCount = 0
     while True:
-        sys.stdout.write(colored("Waiting for clients...\n", COLOR_IMPORTANT))
-        sys.stdout.flush()
+        stdout.write(colored("Waiting for clients...\n", COLOR_IMPORTANT))
+        stdout.flush()
         # accept client
         clientsocket, clientaddr = serverSocket.accept()
         newThread = ClientHandler(str(threadCount), clientsocket, clientaddr, lock)
@@ -754,13 +758,13 @@ def main():
 
     print(get_time())
     # preload group and client information
-    for s in sys.argv:
+    for s in argv:
         if s == '-d':
             debugMode = True
             debugprint("DEBUG MODE ENABLED\nDebug messages will appear similar to this one.\n")
     typeprint("Launching Discussion Server...\n", 'yellow')
     __location__ = initlocation()
-    authors = loadauthors(os.path.join(__location__, AUTHOR_FILE))
+    authors = loadauthors(path.join(__location__, AUTHOR_FILE))
     groups, groupsContent = loadgroups(mainlock)
     debugprint(str(groups) + "\n")
     clients = loadclients(mainlock)
