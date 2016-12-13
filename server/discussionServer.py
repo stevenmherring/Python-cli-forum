@@ -550,8 +550,23 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
             res = responsebuilder(threadid, "Success", "Post created")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
         else:
-            #TODO: Add post creation for a new subject here
-            res = responsebuilder(threadid, "Error", "Post could not be created, subject does not exist")
+            # create the subject
+            new_subject = {}
+            current_group["total_posts"] += 1
+            new_subject.update({"postCount": 1})
+            new_subject.update({"name": postData["subject"]})
+            new_subject.update({"thread": []})
+            # create the post
+            new_post = {}
+            new_post.update({"postNumber": new_subject["postCount"]})
+            new_post.update({"usersViewed": [current_client["id"]]})
+            new_post.update({"date": get_time()})
+            for key, value in postData.items():
+                new_post.update({key: value})
+            new_subject["thread"].append(new_post)
+            current_group["subjects"].append(new_subject)
+            update_groups_data(current_group)
+            res = responsebuilder(threadid, "Success", "New subject and post created")
             senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
 
 def update_groups_data(current_group):
