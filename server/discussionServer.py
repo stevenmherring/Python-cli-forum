@@ -230,7 +230,6 @@ def createclient(clientID, lock):
     """
     global clients
     global id_list
-    print("client_create")
     new_id = -1
     while True:
         new_id = random.randint(0000, 9999)  # generate a new ID for the user
@@ -243,7 +242,6 @@ def createclient(clientID, lock):
     addition.update({"name": clientID})
     addition.update({"subscriptions": []})
     addition.update({"logged_flag": 0})
-    print(addition)
 
     id_list.append(new_id)
     clients.append(addition)
@@ -281,8 +279,6 @@ def loginclient(clientsocket, userid, lock):
             # user doesn't exists
             #res = responsebuilder(threadid, "Error", ("User ID: " + userid + " does not exist."))
             #senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
-           
-            print("login area")
             
             clientdata = createclient(userid, lock)
             # We will create the user pool
@@ -382,7 +378,6 @@ def enter_ag_mode(clientsocket, current_client, msgcount, groups, lock):
         elif subcommand == REQUEST_LOGOUT:
             logoutclient(clientsocket, current_client["id"], current_client, lock)
             debugprint("logged out")
-            print(str(current_client))
             current_client = {}
             delay(0.5)  # need delay to give the client time to receive transmission and close.
             return False
@@ -405,7 +400,6 @@ def enter_sg_mode(clientsocket, current_client, msgCount, groups, lock):
         if g["name"] in current_client["subscriptions"]:
             temp_list.append(loadcurrentgroup(g["name"], lock))
     res.update({"groupList": temp_list})
-    print(str(res))
     senddata(clientsocket, res, PACKET_LENGTH, END_PACKET)
     while True:
         message = receivedata(clientsocket, PACKET_LENGTH, END_PACKET)
@@ -452,8 +446,6 @@ def enter_rg_mode(clientsocket, current_client, groupName, lock):
     """
     Read Group Mode, Allows user to use special commands [id], r, n, p, q
     """
-    print(groupName)
-
     userid = current_client["id"]
     current_group = loadcurrentgroup(groupName, lock)
     # build initial posting response ie. posts 1-msgCount
@@ -515,7 +507,6 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
     Holy shit, super neg on the O(n) but that's okay, n*k very small.
     """
     post_thread = None
-    print(postNumber)
     postNumber -= 1
     with lock:
         for s in current_group["subjects"]:
@@ -523,7 +514,6 @@ def markpostread(clientsocket, userid, current_group, postSubject, postNumber, l
                 post_thread = s["thread"]
                 break
         if post_thread is not None:
-            print(str(post_thread))
             if userid not in post_thread[postNumber]["usersViewed"]:
                 post_thread[postNumber]["usersViewed"].append(userid)
                 update_groups_data(current_group)
@@ -541,10 +531,8 @@ def createpost(clientsocket, current_client, current_group, postData, lock):
     """
     #TODO
     post_thread = None
-    print("\n\n\n DATA SUBJECT\n" + str(postData["subject"]))
     with lock:
         for s in current_group["subjects"]:
-            print("\n\n\n S NAME\n" + str(s))
             if s["name"] == postData["subject"]:
                 post_thread = s
                 break
@@ -793,7 +781,6 @@ def main():
     global COLOR_DEBUG
     debugMode = False
     COLOR_DEBUG = "red"
-
     print(get_time())
     # preload group and client information
     for s in sys.argv:
