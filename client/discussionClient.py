@@ -303,6 +303,7 @@ def main():
                         message.update({"postSubject":sort_group[parse-1]["name"]})
                         message.update({"postNumber":sort_group[parse-1]["cont"]["postNumber"]})
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        rec
                         if(rec["type"] == "Error"):
                             CURRENT_READ = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)["groupList"]
     
