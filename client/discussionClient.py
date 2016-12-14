@@ -303,9 +303,12 @@ def main():
                         message.update({"postSubject":sort_group[parse-1]["name"]})
                         message.update({"postNumber":sort_group[parse-1]["cont"]["postNumber"]})
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
-                        rec
+                        rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print (rec)
                         if(rec["type"] == "Error"):
                             CURRENT_READ = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)["groupList"]
+                        else:
+                            sort_group[parse-1]["cont"]["usersViewed"].append(usr_nm)
     
                     elif usr_input[0] == INPUT_Q:
                         message.update({"subcommand":INPUT_Q})
@@ -336,6 +339,9 @@ def main():
                         print(rec)
                         if(rec["type"] == "Error"):
                             CURRENT_READ = rec["groupList"]
+                        else:
+                            sort_group[parse-1]["cont"]["usersViewed"].append(usr_nm)
+ 
                     elif (usr_input[0] == INPUT_N):
                         if(N_TICK * N_VALUE >= len(CURRENT_READ)):
                             message.update({"subcommand":INPUT_Q})
