@@ -297,7 +297,6 @@ def main():
                             print("returning")
                     
                 
-                        printread(N_VALUE, N_TICK-1, CURRENT_READ, usr_nm)
     
                         message.update({"subcommand":INPUT_R})
                         message.update({"postSubject":sort_group[parse-1]["name"]})
@@ -310,6 +309,7 @@ def main():
                         else:
                             sort_group[parse-1]["cont"]["usersViewed"].append(usr_nm)
     
+                        printread(N_VALUE, N_TICK-1, CURRENT_READ, usr_nm)
                     elif usr_input[0] == INPUT_Q:
                         message.update({"subcommand":INPUT_Q})
                         CURRENT_MODE = MODE_ST
@@ -339,8 +339,6 @@ def main():
                         print(rec)
                         if(rec["type"] == "Error"):
                             CURRENT_READ = rec["groupList"]
-                        else:
-                            sort_group[parse-1]["cont"]["usersViewed"].append(usr_nm)
  
                     elif (usr_input[0] == INPUT_N):
                         if(N_TICK * N_VALUE >= len(CURRENT_READ)):
