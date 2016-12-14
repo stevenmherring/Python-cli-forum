@@ -267,7 +267,46 @@ def main():
             if CURRENT_MODE != MODE_ST:
                 if CURRENT_MODE == MODE_RG:
                     message = {"type":INPUT_RG, "userID":usr_nm}
-                    if usr_input[0] == INPUT_Q:
+
+                    inpt_ptrn = re.compile("\d+")
+                    if inpt_ptrn.match(usr_input[0]):
+                        parse = int(usr_input[0])
+                        print("Group: " + CURRENT_READ["name"])
+                        print("Subject: " + sort_group[parse-1]["name"])
+                        print("Author: " + sort_group[parse-1]["cont"]["author"])
+                        print("Date: " + sort_group[parse-1]["date"])
+                        to_read = sort_group[parse-1]["cont"]["content"].split("\n")
+                        
+                        use = -1
+                        for i in to_read:
+                            print(i)
+                            found = False
+                            use = -1
+                            while use < 0:
+                                inpt = input("To continue, type n ... To go back, type  q\n>")
+                                if inpt == "n"   :
+                                    use = 0
+                                elif inpt == "q" :
+                                    use = 1
+                            if use == 1:
+                                break
+                        if use != 1:
+                            print("no more to read.... press any key to go back")
+                            input(">")
+                        else:
+                            print("returning")
+                    
+                
+                        printread(N_VALUE, N_TICK-1, CURRENT_READ, usr_nm)
+    
+                        message.update({"subcommand":INPUT_R})
+                        message.update({"postSubject":sort_group[parse-1]["name"]})
+                        message.update({"postNumber":sort_group[parse-1]["cont"]["postNumber"]})
+                        senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
+                        if(rec["type"] == "Error"):
+                            CURRENT_READ = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)["groupList"]
+    
+                    elif usr_input[0] == INPUT_Q:
                         message.update({"subcommand":INPUT_Q})
                         CURRENT_MODE = MODE_ST
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
@@ -293,8 +332,9 @@ def main():
                                 message.update({"postNumber":sort_group[locate-1]["cont"]["postNumber"]})                            
                         senddata(cl_socket, message, DEFAULT_SIZE, END_PACKET)
                         rec = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)
+                        print(rec)
                         if(rec["type"] == "Error"):
-                            CURRENT_READ = receivedata(cl_socket, DEFAULT_SIZE, END_PACKET)["groupList"]
+                            CURRENT_READ = rec["groupList"]
                     elif (usr_input[0] == INPUT_N):
                         if(N_TICK * N_VALUE >= len(CURRENT_READ)):
                             message.update({"subcommand":INPUT_Q})
